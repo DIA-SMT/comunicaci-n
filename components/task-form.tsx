@@ -36,7 +36,7 @@ export function TaskForm({
     })
     const { role } = useAuth()
 
-    if (role !== 'admin') return null
+
 
     useEffect(() => {
         if (open) {
@@ -183,6 +183,8 @@ export function TaskForm({
             setLoading(false)
         }
     }
+
+    if (role !== 'admin') return null
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
