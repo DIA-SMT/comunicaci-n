@@ -8,6 +8,8 @@ import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
 import { LogOut, User as UserIcon } from 'lucide-react'
 
+import Link from 'next/link'
+
 export function Navbar() {
     const { user, signOut } = useAuth()
     const router = useRouter()
@@ -38,10 +40,10 @@ export function Navbar() {
                     <>
                         {/* Desktop View */}
                         <div className="hidden md:flex items-center gap-4">
-                            <div className="flex items-center gap-2 text-white">
+                            <Link href="/profile" className="flex items-center gap-2 text-white hover:text-white/80 transition-colors">
                                 <UserIcon className="h-4 w-4" />
                                 <span className="text-sm font-medium">{user.email}</span>
-                            </div>
+                            </Link>
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -68,10 +70,14 @@ export function Navbar() {
                         {/* Mobile Menu Dropdown */}
                         {isMobileMenuOpen && (
                             <div className="absolute top-[80px] right-0 left-0 bg-[#1f89f6] border-t border-white/20 p-4 md:hidden shadow-lg z-50 flex flex-col items-center gap-4 animate-in slide-in-from-top-2">
-                                <div className="flex items-center gap-2 text-white">
+                                <Link
+                                    href="/profile"
+                                    className="flex items-center gap-2 text-white hover:text-white/80 transition-colors p-2"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                >
                                     <UserIcon className="h-4 w-4" />
                                     <span className="text-sm font-medium">{user.email}</span>
-                                </div>
+                                </Link>
                                 <Button
                                     variant="secondary"
                                     size="sm"

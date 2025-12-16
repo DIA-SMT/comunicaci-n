@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 
 type AuthContextType = {
@@ -27,6 +27,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [loading, setLoading] = useState(true)
     const supabase = createClient()
 
+    const lastUserId = useRef<string | null>(null)
+
     useEffect(() => {
         const initializeAuth = async () => {
             try {
@@ -35,6 +37,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setUser(currentSession?.user ?? null)
 
                 if (currentSession?.user) {
+                    lastUserId.current = currentSession.user.id
                     const { data: profile } = await supabase
                         .from('profiles')
                         .select('role')
@@ -53,22 +56,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         initializeAuth()
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-            setSession(newSession)
-            setUser(newSession?.user ?? null)
+            try {
+                setSession(newSession)
+                setUser(newSession?.user ?? null)
 
-            if (newSession?.user) {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', newSession.user.id)
-                    .single()
+                if (newSession?.user) {
+                    // Only fetch role if user ID has changed or we don't have a role yet
+                    if (newSession.user.id !== lastUserId.current) {
+                        lastUserId.current = newSession.user.id
+                        const { data: profile } = await supabase
+                            .from('profiles')
+                            .select('role')
+                            .eq('id', newSession.user.id)
+                            .single()
 
-                setRole(profile?.role as 'admin' | 'common' || 'common')
-            } else {
-                setRole(null)
+                        setRole(profile?.role as 'admin' | 'common' || 'common')
+                    }
+                } else {
+                    lastUserId.current = null
+                    setRole(null)
+                }
+            } catch (error) {
+                console.error('Error in onAuthStateChange:', error)
+            } finally {
+                setLoading(false)
             }
-
-            setLoading(false)
         })
 
         return () => {
