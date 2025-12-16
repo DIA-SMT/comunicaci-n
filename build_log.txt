@@ -1,0 +1,23 @@
+
+> comuniquemos@0.1.0 build
+> next build
+
+   Γû▓ Next.js 16.0.6 (Turbopack)
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ Γ£ô Compiled successfully in 2.2s
+   Running TypeScript ...
+Failed to compile.
+
+./components/dashboard-view.tsx:48:31
+Type error: Property 'assignee' does not exist on type '{ created_at: string | null; id: string; link: string | null; notes: string | null; project_id: string | null; status: string | null; title: string; }'.
+
+  46 |     // Group tasks by assignee
+  47 |     const tasksByAssignee = tasks.reduce((acc, task) => {
+> 48 |         const assignee = task.assignee || 'Sin asignar'
+     |                               ^
+  49 |         if (!acc[assignee]) acc[assignee] = []
+  50 |         acc[assignee].push(task)
+  51 |         return acc
+Next.js build worker exited with code: 1 and signal: null

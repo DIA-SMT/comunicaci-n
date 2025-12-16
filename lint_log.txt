@@ -1,0 +1,23 @@
+
+> comuniquemos@0.1.0 lint
+> eslint
+
+
+C:\Users\matia\comuniquemos\components\assignments-view.tsx
+  6:25  warning  'TaskAssignee' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\matia\comuniquemos\components\project-detail-view.tsx
+  29:8  warning  React Hook useEffect has a missing dependency: 'fetchProjectData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\matia\comuniquemos\components\projects-list-view.tsx
+  33:8   warning  React Hook useEffect has a missing dependency: 'fetchProjects'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  67:41  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+
+C:\Users\matia\comuniquemos\components\task-edit-form.tsx
+  46:8  warning  React Hook useEffect has a missing dependency: 'fetchMembers'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\matia\comuniquemos\next.config.ts
+  7:8  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Γ£û 6 problems (2 errors, 4 warnings)
+
