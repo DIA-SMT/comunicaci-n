@@ -25,7 +25,7 @@ export function ProjectForm({ onProjectCreated }: { onProjectCreated: () => void
     const [showSuggestions, setShowSuggestions] = useState(false)
     const { role } = useAuth()
 
-    if (role !== 'admin') return null
+
 
     useEffect(() => {
         if (open) {
@@ -71,6 +71,8 @@ export function ProjectForm({ onProjectCreated }: { onProjectCreated: () => void
     const filteredAreas = existingAreas.filter(area =>
         area.toLowerCase().includes(formData.area.toLowerCase())
     )
+
+    if (role !== 'admin') return null
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
