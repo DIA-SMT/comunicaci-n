@@ -32,22 +32,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     useEffect(() => {
         const initializeAuth = async () => {
             try {
+                // Use getUser to validate the session with the server instead of just reading local storage
+                const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
+
+                if (userError || !currentUser) {
+                    // If token is invalid or user doesn't exist, clear everything
+                    setSession(null)
+                    setUser(null)
+                    setRole(null)
+                    return
+                }
+
+                // If we have a valid user, get the session too (getUser doesn't return the session object directly)
                 const { data: { session: currentSession } } = await supabase.auth.getSession()
                 setSession(currentSession)
-                setUser(currentSession?.user ?? null)
+                setUser(currentUser)
 
-                if (currentSession?.user) {
-                    lastUserId.current = currentSession.user.id
+                if (currentUser) {
+                    lastUserId.current = currentUser.id
                     const { data: profile } = await supabase
                         .from('profiles')
                         .select('role')
-                        .eq('id', currentSession.user.id)
+                        .eq('id', currentUser.id)
                         .single()
 
                     setRole(profile?.role as 'admin' | 'common' || 'common')
                 }
             } catch (error) {
                 console.error('Error initializing auth:', error)
+                // Force cleanup on error
+                setSession(null)
+                setUser(null)
+                setRole(null)
             } finally {
                 setLoading(false)
             }
@@ -57,6 +73,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
             try {
+                // Handle specific events that should force a reset
+                if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESH_REVOKED') {
+                    setSession(null)
+                    setUser(null)
+                    setRole(null)
+                    lastUserId.current = null
+                    setLoading(false)
+                    return
+                }
+
                 setSession(newSession)
                 setUser(newSession?.user ?? null)
 
