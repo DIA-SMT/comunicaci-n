@@ -74,7 +74,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
             try {
                 // Handle specific events that should force a reset
-                if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESH_REVOKED') {
+                // Supabase typings no siempre incluyen todos los eventos posibles.
+                const eventName = event as string
+                if (event === 'SIGNED_OUT' || eventName === 'TOKEN_REFRESH_REVOKED') {
                     setSession(null)
                     setUser(null)
                     setRole(null)

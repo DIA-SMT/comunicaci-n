@@ -4,6 +4,8 @@ import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { AuthProvider } from "@/context/AuthContext";
 
+import { ChatWidget } from "@/components/chat-widget";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -35,6 +37,7 @@ export default function RootLayout({
         <AuthProvider>
           <Navbar />
           {children}
+          <ChatWidget />
         </AuthProvider>
       </body>
     </html>
