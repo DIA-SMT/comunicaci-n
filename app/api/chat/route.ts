@@ -1,5 +1,5 @@
 import { openai } from '@ai-sdk/openai';
-import { convertToModelMessages, jsonSchema, stepCountIs, streamText, tool } from 'ai';
+import { convertToModelMessages, jsonSchema, streamText, tool } from 'ai';
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
@@ -312,16 +312,22 @@ export async function POST(req: Request) {
 
     const result = await streamText({
         model: openai('gpt-4o-mini'),
-        // Importante: con tools, el default `stopWhen = stepCountIs(1)` puede cortar
-        // antes de que el modelo escriba la respuesta final (queda solo tool-call/tool-result).
-        // Permitimos al menos un segundo paso para que responda en lenguaje natural.
-        stopWhen: stepCountIs(2),
+        // Importante: con tools, el stream NO debe terminar en `finishReason: "tool-calls"`,
+        // porque eso deja la UI sin texto (solo tool events). Terminamos cuando el último
+        // paso ya no sea "tool-calls", con un tope de seguridad.
+        stopWhen: ({ steps }) => {
+            const last = steps[steps.length - 1]
+            if (!last) return false
+            if (steps.length >= 6) return true
+            return last.finishReason !== 'tool-calls'
+        },
         system: `Eres un asistente del sistema de gestión de proyectos "Comunicación".
 Tienes acceso a datos de la BD mediante herramientas (projects, tasks, members).
 Antes de decir "no sé", consulta la BD con las herramientas.
 Si el usuario pregunta por tareas de un miembro y no especifica el id, primero usa get_members para encontrarlo por nombre/email y luego usa get_tasks con member_id o assignee_name.
 Si el usuario pregunta por "mis tareas" o "mis tareas pendientes", usa get_my_tasks (y para pendientes usa status="Pendiente").
 Nota: "mis tareas" se resuelve por members.email == auth.email(). Si no existe, responde pidiendo que se cargue el email del miembro.
+Después de ejecutar herramientas, SIEMPRE responde con una respuesta final en texto para el usuario (no te quedes solo en llamadas a herramientas).
 
 FORMATO DE RESPUESTA (muy importante):
 - Responde SIEMPRE en español.
