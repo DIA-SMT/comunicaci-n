@@ -1,4 +1,4 @@
-import { openai } from '@ai-sdk/openai';
+import { createOpenAI } from '@ai-sdk/openai';
 import { convertToModelMessages, jsonSchema, streamText, tool } from 'ai';
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
@@ -7,6 +7,31 @@ import { cookies } from 'next/headers'
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+    // OpenRouter (vía proveedor OpenAI compatible)
+    // Permite cambiar el modelo por .env sin tocar código.
+    const openrouterApiKey = process.env.OPENROUTER_API_KEY
+    if (!openrouterApiKey) {
+        // Si no existe la key, en producción/dev el request “parece” colgar o fallar sin explicación.
+        return Response.json(
+            {
+                error: 'Falta configurar OPENROUTER_API_KEY en el .env (y reiniciar el servidor)',
+            },
+            { status: 500 }
+        )
+    }
+
+    const openrouter = createOpenAI({
+        baseURL: process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1',
+        apiKey: openrouterApiKey,
+        headers: {
+            // Recomendados por OpenRouter (opcionales pero útiles para rate-limit/analytics)
+            ...(process.env.OPENROUTER_HTTP_REFERER ? { 'HTTP-Referer': process.env.OPENROUTER_HTTP_REFERER } : {}),
+            ...(process.env.OPENROUTER_X_TITLE ? { 'X-Title': process.env.OPENROUTER_X_TITLE } : {}),
+        },
+        // Para que metadata del provider no diga "openai" si querés diferenciar
+        name: 'openrouter',
+    })
+
     const cookieStore = await cookies()
 
     const supabase = createServerClient(
@@ -310,18 +335,29 @@ export async function POST(req: Request) {
         )
     }
 
-    const result = await streamText({
-        model: openai('gpt-4o-mini'),
-        // Importante: con tools, el stream NO debe terminar en `finishReason: "tool-calls"`,
-        // porque eso deja la UI sin texto (solo tool events). Terminamos cuando el último
-        // paso ya no sea "tool-calls", con un tope de seguridad.
-        stopWhen: ({ steps }) => {
-            const last = steps[steps.length - 1]
-            if (!last) return false
-            if (steps.length >= 6) return true
-            return last.finishReason !== 'tool-calls'
-        },
-        system: `Eres un asistente del sistema de gestión de proyectos "Comunicación".
+    const openrouterModel = process.env.OPENROUTER_MODEL ?? 'openai/gpt-4o-mini'
+    const openrouterFallbackModel = process.env.OPENROUTER_FALLBACK_MODEL
+    const openrouterMaxRetries = Number(process.env.OPENROUTER_MAX_RETRIES ?? '2')
+
+    let result
+    try {
+        const run = async (modelId: string) =>
+            streamText({
+                // OpenRouter es compatible con el endpoint OpenAI "chat completions".
+                // El endpoint "responses" puede fallar en OpenRouter (400 con validación Zod).
+                model: openrouter.chat(modelId),
+                // El retry interno del AI SDK aplica a 5xx/transitorios. Lo hacemos configurable.
+                maxRetries: Number.isFinite(openrouterMaxRetries) ? openrouterMaxRetries : 2,
+                // Importante: con tools, el stream NO debe terminar en `finishReason: "tool-calls"`,
+                // porque eso deja la UI sin texto (solo tool events). Terminamos cuando el último
+                // paso ya no sea "tool-calls", con un tope de seguridad.
+                stopWhen: ({ steps }) => {
+                    const last = steps[steps.length - 1]
+                    if (!last) return false
+                    if (steps.length >= 6) return true
+                    return last.finishReason !== 'tool-calls'
+                },
+                system: `Eres un asistente del sistema de gestión de proyectos "Comunicación".
 Tienes acceso a datos de la BD mediante herramientas (projects, tasks, members).
 Antes de decir "no sé", consulta la BD con las herramientas.
 Si el usuario pregunta por tareas de un miembro y no especifica el id, primero usa get_members para encontrarlo por nombre/email y luego usa get_tasks con member_id o assignee_name.
@@ -338,9 +374,34 @@ FORMATO DE RESPUESTA (muy importante):
 - Si no hay resultados, dilo explícitamente (ej: "No encontré tareas para <miembro> con ese filtro.").
 
 Fecha actual: ${new Date().toISOString()}`,
-        messages: modelMessages,
-        tools,
-    });
+                messages: modelMessages,
+                tools,
+            })
+
+        try {
+            result = await run(openrouterModel)
+        } catch (e: any) {
+            const statusCode = e?.statusCode ?? e?.cause?.statusCode ?? e?.lastError?.statusCode
+            const isGatewayError = statusCode === 502 || statusCode === 503 || statusCode === 504
+
+            // Fallback opcional si OpenRouter responde con 502/503/504 (problemas de gateway/upstream)
+            if (openrouterFallbackModel && isGatewayError) {
+                result = await run(openrouterFallbackModel)
+            } else {
+                throw e
+            }
+        }
+    } catch (e: any) {
+        return Response.json(
+            {
+                error: 'Error llamando a OpenRouter',
+                model: openrouterModel,
+                fallbackModel: openrouterFallbackModel ?? null,
+                detail: String(e?.message ?? e),
+            },
+            { status: 500 }
+        )
+    }
 
     // The AI SDK v5 expone el stream de chat como "UI message stream".
     // `useChat` espera este formato, así que devolvemos la respuesta SSE correspondiente.
