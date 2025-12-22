@@ -27,36 +27,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [loading, setLoading] = useState(true)
 
     const lastUserId = useRef<string | null>(null)
+    const loadingTimeoutRef = useRef<number | null>(null)
 
     useEffect(() => {
+        // Watchdog: en prod a veces una promesa de auth queda colgada (red, third-party, etc.).
+        // Nunca dejamos loading infinito.
+        loadingTimeoutRef.current = window.setTimeout(() => {
+            setLoading(false)
+        }, 8000)
+
         const initializeAuth = async () => {
             try {
-                // Use getUser to validate the session with the server instead of just reading local storage
-                const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
-
-                if (userError || !currentUser) {
-                    // If token is invalid or user doesn't exist, clear everything
-                    setSession(null)
-                    setUser(null)
-                    setRole(null)
-                    return
-                }
-
-                // If we have a valid user, get the session too (getUser doesn't return the session object directly)
+                // En refresh, NO dependemos de una llamada remota (getUser) para salir de loading.
+                // Primero leemos sesión local (rápido) y luego validamos en background.
                 const { data: { session: currentSession } } = await supabase.auth.getSession()
-                setSession(currentSession)
-                setUser(currentUser)
 
-                if (currentUser) {
-                    lastUserId.current = currentUser.id
+                setSession(currentSession)
+                setUser(currentSession?.user ?? null)
+
+                if (currentSession?.user) {
+                    lastUserId.current = currentSession.user.id
                     const { data: profile } = await supabase
                         .from('profiles')
                         .select('role')
-                        .eq('id', currentUser.id)
-                        .single()
+                        .eq('id', currentSession.user.id)
+                        .maybeSingle()
 
-                    setRole(profile?.role as 'admin' | 'common' || 'common')
+                    setRole((profile?.role as 'admin' | 'common') || 'common')
+                } else {
+                    setRole(null)
+                    lastUserId.current = null
                 }
+
+                // Validación remota (no bloquea UI). Si falla, limpiamos.
+                supabase.auth.getUser().then(({ data, error }) => {
+                    if (error || !data?.user) {
+                        setSession(null)
+                        setUser(null)
+                        setRole(null)
+                        lastUserId.current = null
+                    }
+                }).catch(() => {
+                    // ignore
+                })
             } catch (error) {
                 console.error('Error initializing auth:', error)
                 // Force cleanup on error
@@ -65,6 +78,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setRole(null)
             } finally {
                 setLoading(false)
+                if (loadingTimeoutRef.current) {
+                    window.clearTimeout(loadingTimeoutRef.current)
+                    loadingTimeoutRef.current = null
+                }
             }
         }
 
@@ -95,7 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             .from('profiles')
                             .select('role')
                             .eq('id', newSession.user.id)
-                            .single()
+                            .maybeSingle()
 
                         setRole(profile?.role as 'admin' | 'common' || 'common')
                     }
@@ -107,11 +124,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 console.error('Error in onAuthStateChange:', error)
             } finally {
                 setLoading(false)
+                if (loadingTimeoutRef.current) {
+                    window.clearTimeout(loadingTimeoutRef.current)
+                    loadingTimeoutRef.current = null
+                }
             }
         })
 
         return () => {
             subscription.unsubscribe()
+            if (loadingTimeoutRef.current) {
+                window.clearTimeout(loadingTimeoutRef.current)
+                loadingTimeoutRef.current = null
+            }
         }
     }, [])
 

@@ -27,12 +27,17 @@ export function ProjectsListView() {
     const [showCompleted, setShowCompleted] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [chartData, setChartData] = useState<ProjectProgress[]>([])
-    const { role } = useAuth()
+    const { role, user, loading: authLoading } = useAuth()
 
     useEffect(() => {
+        if (authLoading) return
+        if (!user) {
+            router.replace('/login')
+            return
+        }
         fetchProjects()
         fetchChartData()
-    }, [showCompleted])
+    }, [showCompleted, authLoading, user])
 
     const fetchProjects = useCallback(async () => {
         try {
@@ -97,9 +102,11 @@ export function ProjectsListView() {
     }, [])
 
     useEffect(() => {
+        if (authLoading) return
+        if (!user) return
         fetchProjects()
         fetchChartData()
-    }, [fetchProjects, fetchChartData])
+    }, [fetchProjects, fetchChartData, authLoading, user])
 
     async function getProjectProgress(projectId: string) {
         const { data: tasks } = await supabase
@@ -137,6 +144,8 @@ export function ProjectsListView() {
         )
     })
 
+    if (authLoading) return <div className="p-8">Cargando sesión...</div>
+    if (!user) return null
     if (loading) return <div className="p-8">Cargando proyectos...</div>
 
     return (
