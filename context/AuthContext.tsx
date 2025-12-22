@@ -59,17 +59,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     lastUserId.current = null
                 }
 
-                // Validación remota (no bloquea UI). Si falla, limpiamos.
-                supabase.auth.getUser().then(({ data, error }) => {
-                    if (error || !data?.user) {
-                        setSession(null)
-                        setUser(null)
-                        setRole(null)
-                        lastUserId.current = null
+                // Validación remota: en prod necesitamos esto para detectar sesión válida post-refresh
+                // (y es la request "user" que estás mirando en Network). No debe colgar infinito:
+                // tenemos fetch timeout global + watchdog local.
+                try {
+                    const { data, error } = await supabase.auth.getUser()
+
+                    // Si hay una sesión local pero falla la validación por red/timeout,
+                    // NO limpiamos para evitar logout falso; reintentamos luego.
+                    if (error && currentSession) {
+                        window.setTimeout(() => {
+                            supabase.auth.getUser().then(({ data: d2, error: e2 }) => {
+                                if (e2) return
+                                setUser(d2?.user ?? null)
+                                if (!d2?.user) {
+                                    setSession(null)
+                                    setRole(null)
+                                    lastUserId.current = null
+                                }
+                            }).catch(() => { })
+                        }, 1500)
+                    } else {
+                        setUser(data?.user ?? null)
+                        if (!data?.user) {
+                            setSession(null)
+                            setRole(null)
+                            lastUserId.current = null
+                        }
                     }
-                }).catch(() => {
-                    // ignore
-                })
+                } catch {
+                    // ignore: sesión local puede seguir funcionando; el watchdog evita loading infinito
+                }
             } catch (error) {
                 console.error('Error initializing auth:', error)
                 // Force cleanup on error
