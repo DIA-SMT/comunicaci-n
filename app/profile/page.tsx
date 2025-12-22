@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +16,6 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(false)
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
     const router = useRouter()
-    const supabase = createClient()
 
     const handleUpdatePassword = async (e: React.FormEvent) => {
         e.preventDefault()

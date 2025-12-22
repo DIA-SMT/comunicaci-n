@@ -1,6 +1,6 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase'
 import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 
@@ -25,7 +25,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [session, setSession] = useState<Session | null>(null)
     const [role, setRole] = useState<'admin' | 'common' | null>(null)
     const [loading, setLoading] = useState(true)
-    const supabase = createClient()
 
     const lastUserId = useRef<string | null>(null)
 
@@ -114,7 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return () => {
             subscription.unsubscribe()
         }
-    }, [supabase])
+    }, [])
 
     const signOut = async () => {
         await supabase.auth.signOut()
