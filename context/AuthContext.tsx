@@ -59,36 +59,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     lastUserId.current = null
                 }
 
-                // Validación remota: en prod necesitamos esto para detectar sesión válida post-refresh
-                // (y es la request "user" que estás mirando en Network). No debe colgar infinito:
-                // tenemos fetch timeout global + watchdog local.
+                // Validación remota (server-side) para producción:
+                // si en refresh a veces "no aparece /auth/v1/user", esto nos da un request estable
+                // que depende de cookies del server (y se ve claro en Network: /api/auth/me).
                 try {
-                    const { data, error } = await supabase.auth.getUser()
+                    const controller = new AbortController()
+                    const t = window.setTimeout(() => controller.abort(), 8000)
+                    const res = await fetch('/api/auth/me', {
+                        method: 'GET',
+                        cache: 'no-store',
+                        signal: controller.signal,
+                    })
+                    window.clearTimeout(t)
 
-                    // Si hay una sesión local pero falla la validación por red/timeout,
-                    // NO limpiamos para evitar logout falso; reintentamos luego.
-                    if (error && currentSession) {
-                        window.setTimeout(() => {
-                            supabase.auth.getUser().then(({ data: d2, error: e2 }) => {
-                                if (e2) return
-                                setUser(d2?.user ?? null)
-                                if (!d2?.user) {
-                                    setSession(null)
-                                    setRole(null)
-                                    lastUserId.current = null
-                                }
-                            }).catch(() => { })
-                        }, 1500)
-                    } else {
-                        setUser(data?.user ?? null)
-                        if (!data?.user) {
-                            setSession(null)
-                            setRole(null)
-                            lastUserId.current = null
+                    if (res.ok) {
+                        const payload = await res.json()
+                        // payload.user puede ser minimal; mantenemos el user de sesión local si existe.
+                        setRole(payload.role ?? 'common')
+                        if (!currentSession?.user && payload.user) {
+                            // fallback mínimo para UI (Navbar usa email)
+                            setUser({ ...(payload.user ?? {}) } as any)
                         }
+                    } else {
+                        // Si el server dice 401, limpiamos; no tiene sentido quedarse cargando.
+                        setSession(null)
+                        setUser(null)
+                        setRole(null)
+                        lastUserId.current = null
                     }
                 } catch {
-                    // ignore: sesión local puede seguir funcionando; el watchdog evita loading infinito
+                    // ignore: watchdog evita loading infinito
                 }
             } catch (error) {
                 console.error('Error initializing auth:', error)

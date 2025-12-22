@@ -24,6 +24,7 @@ export function ProjectsListView() {
     const router = useRouter()
     const [projects, setProjects] = useState<Project[]>([])
     const [loading, setLoading] = useState(true)
+    const [loadError, setLoadError] = useState<string | null>(null)
     const [showCompleted, setShowCompleted] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [chartData, setChartData] = useState<ProjectProgress[]>([])
@@ -35,12 +36,21 @@ export function ProjectsListView() {
             router.replace('/login')
             return
         }
-        fetchProjects()
-        fetchChartData()
+
+        setLoading(true)
+        setLoadError(null)
+
+        const t = window.setTimeout(() => {
+            setLoading(false)
+            setLoadError('La carga tardó demasiado. Reintentá.')
+        }, 12000)
+
+        Promise.all([fetchProjects(), fetchChartData()]).finally(() => window.clearTimeout(t))
     }, [showCompleted, authLoading, user])
 
     const fetchProjects = useCallback(async () => {
         try {
+            setLoadError(null)
             let query = supabase
                 .from('projects')
                 .select('*')
@@ -57,6 +67,7 @@ export function ProjectsListView() {
             if (data) setProjects(data)
         } catch (error) {
             console.error('Error fetching projects:', error)
+            setLoadError('No se pudieron cargar los proyectos. Reintentá.')
         } finally {
             setLoading(false)
         }
@@ -64,6 +75,7 @@ export function ProjectsListView() {
 
     const fetchChartData = useCallback(async () => {
         try {
+            setLoadError(null)
             const { data: allTasks } = await supabase
                 .from('tasks')
                 .select('*, projects(*)')
@@ -98,6 +110,7 @@ export function ProjectsListView() {
             setChartData(Array.from(progressMap.values()).sort((a, b) => b.total - a.total))
         } catch (error) {
             console.error('Error fetching chart data:', error)
+            setLoadError('No se pudieron cargar los datos del gráfico.')
         }
     }, [])
 
@@ -147,6 +160,24 @@ export function ProjectsListView() {
     if (authLoading) return <div className="p-8">Cargando sesión...</div>
     if (!user) return null
     if (loading) return <div className="p-8">Cargando proyectos...</div>
+    if (loadError) {
+        return (
+            <div className="p-8">
+                <div className="mb-3 font-medium text-slate-700">{loadError}</div>
+                <Button
+                    variant="outline"
+                    onClick={() => {
+                        setLoading(true)
+                        setLoadError(null)
+                        fetchProjects()
+                        fetchChartData()
+                    }}
+                >
+                    Reintentar
+                </Button>
+            </div>
+        )
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
