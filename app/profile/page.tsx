@@ -53,8 +53,8 @@ export default function ProfilePage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 p-6 flex items-center justify-center">
-            <div className="w-full max-w-md space-y-4">
+        <div className="min-h-screen bg-slate-50 p-6">
+            <div className="max-w-7xl mx-auto">
                 <Button
                     variant="ghost"
                     onClick={() => router.back()}
@@ -64,65 +64,69 @@ export default function ProfilePage() {
                     Volver
                 </Button>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Perfil de Usuario</CardTitle>
-                        <CardDescription>
-                            Administra tu cuenta y seguridad
-                        </CardDescription>
-                    </CardHeader>
-                    <form onSubmit={handleUpdatePassword}>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <h3 className="text-lg font-medium">Cambiar Contraseña</h3>
-                                <p className="text-sm text-slate-500">
-                                    Ingresa tu nueva contraseña para actualizarla.
-                                </p>
-                            </div>
+                <div className="flex items-center justify-center py-12">
+                    <div className="w-full max-w-md space-y-4">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Perfil de Usuario</CardTitle>
+                                <CardDescription>
+                                    Administra tu cuenta y seguridad
+                                </CardDescription>
+                            </CardHeader>
+                            <form onSubmit={handleUpdatePassword}>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <h3 className="text-lg font-medium">Cambiar Contraseña</h3>
+                                        <p className="text-sm text-slate-500">
+                                            Ingresa tu nueva contraseña para actualizarla.
+                                        </p>
+                                    </div>
 
-                            {message && (
-                                <Alert variant={message.type === 'error' ? 'destructive' : 'default'} className={message.type === 'success' ? 'bg-green-50 text-green-900 border-green-200' : ''}>
-                                    <AlertDescription>
-                                        {message.text}
-                                    </AlertDescription>
-                                </Alert>
-                            )}
+                                    {message && (
+                                        <Alert variant={message.type === 'error' ? 'destructive' : 'default'} className={message.type === 'success' ? 'bg-green-50 text-green-900 border-green-200' : ''}>
+                                            <AlertDescription>
+                                                {message.text}
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
 
-                            <div className="space-y-2">
-                                <Label htmlFor="new-password">Nueva Contraseña</Label>
-                                <Input
-                                    id="new-password"
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
-                                <Input
-                                    id="confirm-password"
-                                    type="password"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    required
-                                />
-                            </div>
-                        </CardContent>
-                        <CardFooter>
-                            <Button type="submit" className="w-full mt-4 bg-[#1f89f6] hover:bg-[#1877d2]" disabled={loading}>
-                                {loading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Actualizando...
-                                    </>
-                                ) : (
-                                    'Actualizar Contraseña'
-                                )}
-                            </Button>
-                        </CardFooter>
-                    </form>
-                </Card>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="new-password">Nueva Contraseña</Label>
+                                        <Input
+                                            id="new-password"
+                                            type="password"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
+                                        <Input
+                                            id="confirm-password"
+                                            type="password"
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                </CardContent>
+                                <CardFooter>
+                                    <Button type="submit" className="w-full mt-4 bg-[#1f89f6] hover:bg-[#1877d2]" disabled={loading}>
+                                        {loading ? (
+                                            <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Actualizando...
+                                            </>
+                                        ) : (
+                                            'Actualizar Contraseña'
+                                        )}
+                                    </Button>
+                                </CardFooter>
+                            </form>
+                        </Card>
+                    </div>
+                </div>
             </div>
         </div>
     )

@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ProjectForm } from '@/components/project-form'
 import { Input } from '@/components/ui/input'
-import { Calendar, FolderKanban, Users, Search } from 'lucide-react'
+import { Calendar, FolderKanban, Users, Search, ArrowLeft } from 'lucide-react'
 import { ProjectProgressChart } from '@/components/project-progress-chart'
 
 type ProjectProgress = {
@@ -182,6 +182,16 @@ export function ProjectsListView() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
             <div className="max-w-7xl mx-auto">
+                {showCompleted && (
+                    <Button
+                        variant="ghost"
+                        onClick={() => setShowCompleted(false)}
+                        className="mb-4"
+                    >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Volver a proyectos
+                    </Button>
+                )}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                     <div>
                         <h1 className="text-4xl font-bold text-slate-900 mb-2">Proyectos</h1>

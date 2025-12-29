@@ -27,7 +27,7 @@ export function AssignmentsView() {
     const [assignees, setAssignees] = useState<AssigneeWithTasks[]>([])
 
     const [loading, setLoading] = useState(true)
-    const [expandedAssignees, setExpandedAssignees] = useState<string[]>([])
+    const [expandedAssignee, setExpandedAssignee] = useState<string | null>(null)
 
     useEffect(() => {
         fetchAssignments()
@@ -103,11 +103,7 @@ export function AssignmentsView() {
     }
 
     const toggleAssignee = (name: string) => {
-        setExpandedAssignees(prev =>
-            prev.includes(name)
-                ? prev.filter(n => n !== name)
-                : [...prev, name]
-        )
+        setExpandedAssignee(prev => prev === name ? null : name)
     }
 
     const getStatusColor = (status: string | null) => {
@@ -147,11 +143,11 @@ export function AssignmentsView() {
                         <p className="text-slate-500">Crea tareas y asigna responsables para verlas aquí</p>
                     </Card>
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="columns-1 lg:columns-2 gap-6 space-y-6">
                         {assignees.map((assignee) => {
-                            const isExpanded = expandedAssignees.includes(assignee.name)
+                            const isExpanded = expandedAssignee === assignee.name
                             return (
-                                <Card key={assignee.name} className="border-l-4 border-l-blue-500 transition-all duration-200">
+                                <Card key={assignee.name} className="break-inside-avoid border-l-4 border-l-blue-500 transition-all duration-200">
                                     <CardHeader
                                         className="bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors"
                                         onClick={() => toggleAssignee(assignee.name)}
