@@ -35,38 +35,38 @@ export function AssignmentsView() {
 
     async function fetchAssignments() {
         try {
-
-
-            // Fetch all task assignees
-            const { data: taskAssignees } = await supabase
+            // Fetch everything in one go: Assignees -> Task -> Project
+            const { data: taskAssignees, error } = await supabase
                 .from('task_assignees')
-                .select('*')
+                .select(`
+                    *,
+                    tasks (
+                        *,
+                        projects (*)
+                    )
+                `)
 
+            if (error) throw error
             if (!taskAssignees) return
 
             // Group by assignee name
             const assigneeMap = new Map<string, TaskWithProject[]>()
 
             for (const assignee of taskAssignees) {
-                // Fetch task details
-                const { data: task } = await supabase
-                    .from('tasks')
-                    .select('*')
-                    .eq('id', assignee.task_id)
-                    .single()
+                // The joined data comes in 'tasks' property (might be an array or object depending on relationship)
+                // Assuming One-to-One from assignee row to task row based on FK
+                const taskData = assignee.tasks as any
 
-                if (!task) continue
+                if (!taskData) continue
 
-                // Fetch project details
-                const { data: project } = await supabase
-                    .from('projects')
-                    .select('*')
-                    .eq('id', task.project_id || '')
-                    .single()
+                // Check if project exists in the nested data
+                // It might be 'projects' (plural) or singular depending on the exact relation name
+                // usually it matches the table name 'projects' unless aliased
+                const projectData = taskData.projects
 
                 const taskWithProject: TaskWithProject = {
-                    ...task,
-                    project: project || null
+                    ...taskData,
+                    project: projectData || null
                 }
 
                 if (!assigneeMap.has(assignee.assignee_name)) {
