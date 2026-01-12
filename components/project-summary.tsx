@@ -1,0 +1,111 @@
+'use client'
+
+import { Card, CardContent } from "@/components/ui/card"
+import { CheckCircle, AlertTriangle, Clock, CheckCircle2 } from "lucide-react"
+import { Project } from "@/types"
+
+interface ProjectSummaryProps {
+    projects: Project[]
+    currentFilter: 'active' | 'urgent' | 'due_soon' | 'completed'
+    onFilterChange: (filter: 'active' | 'urgent' | 'due_soon' | 'completed') => void
+}
+
+export function ProjectSummary({ projects, currentFilter, onFilterChange }: ProjectSummaryProps) {
+    const totalProjects = projects.length
+
+    // Active: Not completed
+    const activeProjects = projects.filter(p => !p.completed_at).length
+
+    // Completed: Has completed_at date
+    const completedProjects = projects.filter(p => p.completed_at).length
+
+    // Urgente: Active AND Priority is Urgent (ignoring Overdue)
+    const urgentProjects = projects.filter(p => {
+        return !p.completed_at && p.priority === 'Urgente'
+    }).length
+
+    // Vencen esta semana: Active AND Deadline is within current calendar week (Mon-Sun)
+    const dueSoonProjects = projects.filter(p => {
+        if (p.completed_at || !p.deadline) return false
+
+        const today = new Date()
+        const currentDay = today.getDay() // 0 = Sunday, 1 = Monday...
+        const distanceToMonday = currentDay === 0 ? 6 : currentDay - 1
+
+        const monday = new Date(today)
+        monday.setDate(today.getDate() - distanceToMonday)
+        monday.setHours(0, 0, 0, 0)
+
+        const sunday = new Date(monday)
+        sunday.setDate(monday.getDate() + 6)
+        sunday.setHours(23, 59, 59, 999)
+
+        const deadline = new Date(p.deadline)
+        // Check if deadline is within the current week window
+        return deadline >= monday && deadline <= sunday
+    }).length
+
+    const getActiveStyle = (filter: string) => {
+        return currentFilter === filter ? 'bg-slate-100 ring-2 ring-inset ring-slate-200' : 'hover:bg-slate-50'
+    }
+
+    return (
+        <Card className="bg-white shadow-md border-slate-200 mb-6 overflow-hidden">
+            <CardContent className="p-0">
+                <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-100 text-left">
+                    <button
+                        onClick={() => onFilterChange('active')}
+                        className={`flex-1 flex items-center py-2 px-4 transition-all cursor-pointer text-left w-full ${getActiveStyle('active')}`}
+                    >
+                        <div className="rounded-full p-1.5 bg-emerald-100 mr-3 shrink-0">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0">Activos</p>
+                            <h3 className="text-lg font-bold text-slate-800 leading-none">{activeProjects}</h3>
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => onFilterChange('urgent')}
+                        className={`flex-1 flex items-center py-2 px-4 transition-all cursor-pointer text-left w-full ${getActiveStyle('urgent')}`}
+                    >
+                        <div className="rounded-full p-1.5 bg-red-100 mr-3 shrink-0">
+                            <AlertTriangle className="w-4 h-4 text-red-600" />
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0">Urgente</p>
+                            <h3 className="text-lg font-bold text-slate-800 leading-none">{urgentProjects}</h3>
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => onFilterChange('due_soon')}
+                        className={`flex-1 flex items-center py-2 px-4 transition-all cursor-pointer text-left w-full ${getActiveStyle('due_soon')}`}
+                    >
+                        <div className="rounded-full p-1.5 bg-orange-100 mr-3 shrink-0">
+                            <Clock className="w-4 h-4 text-orange-600" />
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0">Vencen esta semana</p>
+                            <h3 className="text-lg font-bold text-slate-800 leading-none">{dueSoonProjects}</h3>
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => onFilterChange('completed')}
+                        className={`flex-1 flex items-center py-2 px-4 transition-all cursor-pointer text-left w-full ${getActiveStyle('completed')}`}
+                    >
+                        <div className="rounded-full p-1.5 bg-blue-100 mr-3 shrink-0">
+                            <CheckCircle className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0">Finalizados</p>
+                            <h3 className="text-lg font-bold text-slate-800 leading-none">{completedProjects}</h3>
+                        </div>
+                    </button>
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
