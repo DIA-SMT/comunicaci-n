@@ -14,8 +14,15 @@ export async function POST(request: NextRequest) {
             )
         }
 
+        console.log('[API] Check Env:', {
+            hasUser: !!process.env.GMAIL_USER,
+            hasPass: !!process.env.GMAIL_APP_PASSWORD,
+            userLen: process.env.GMAIL_USER?.length
+        })
+
         // Validar variables de entorno
         if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+            console.error('[API] Missing GMAIL credentials')
             return NextResponse.json(
                 { error: 'GMAIL_USER y GMAIL_APP_PASSWORD deben estar configurados en las variables de entorno' },
                 { status: 500 }

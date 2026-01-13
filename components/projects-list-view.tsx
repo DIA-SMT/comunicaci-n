@@ -11,8 +11,9 @@ import { Button } from '@/components/ui/button'
 import { ProjectForm } from '@/components/project-form'
 import { Input } from '@/components/ui/input'
 import { ProjectSummary } from '@/components/project-summary'
-import { Calendar, FolderKanban, Users, Search, ArrowLeft } from 'lucide-react'
+import { Calendar, FolderKanban, Users, Search, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { ProjectProgressChart } from '@/components/project-progress-chart'
+import { ProjectCompletionModal } from '@/components/project-completion-modal'
 
 type ProjectProgress = {
     name: string
@@ -26,9 +27,10 @@ export function ProjectsListView() {
     const [projects, setProjects] = useState<Project[]>([])
     const [loading, setLoading] = useState(true)
     const [loadError, setLoadError] = useState<string | null>(null)
-    const [filter, setFilter] = useState<'active' | 'urgent' | 'due_soon' | 'completed'>('active')
+    const [filter, setFilter] = useState<'active' | 'urgent' | 'due_soon' | 'completed' | 'ready'>('active')
     const [searchQuery, setSearchQuery] = useState('')
     const [chartData, setChartData] = useState<ProjectProgress[]>([])
+    const [activeCompletionProjectId, setActiveCompletionProjectId] = useState<string | null>(null)
     const { role, user, loading: authLoading } = useAuth()
 
     useEffect(() => {
@@ -144,6 +146,11 @@ export function ProjectsListView() {
         }
     }, [projects])
 
+    const markProjectAsCompleted = (e: React.MouseEvent, projectId: string) => {
+        e.stopPropagation()
+        setActiveCompletionProjectId(projectId)
+    }
+
     const filteredProjects = projects.filter(project => {
         const matchesSearch =
             project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -153,13 +160,17 @@ export function ProjectsListView() {
         let matchesFilter = false
 
         if (filter === 'active') {
-            matchesFilter = project.completed_at === null
+            matchesFilter = project.completed_at === null && (projectProgress[project.id] || 0) < 100
         } else if (filter === 'completed') {
             matchesFilter = project.completed_at !== null
+        } else if (filter === 'ready') {
+            matchesFilter = project.completed_at === null && (projectProgress[project.id] || 0) === 100
         } else if (filter === 'urgent') {
-            matchesFilter = project.completed_at === null && project.priority === 'Urgente'
+            matchesFilter = project.completed_at === null && project.priority === 'Urgente' && (projectProgress[project.id] || 0) < 100
         } else if (filter === 'due_soon') {
             if (project.completed_at || !project.deadline) {
+                matchesFilter = false
+            } else if ((projectProgress[project.id] || 0) === 100) {
                 matchesFilter = false
             } else {
                 const today = new Date()
@@ -241,6 +252,7 @@ export function ProjectsListView() {
                     projects={projects}
                     currentFilter={filter}
                     onFilterChange={setFilter}
+                    projectProgress={projectProgress}
                 />
 
                 {/* Search Bar */}
@@ -258,10 +270,10 @@ export function ProjectsListView() {
                     <div className="text-center py-16">
                         <FolderKanban className="w-16 h-16 mx-auto text-slate-300 mb-4" />
                         <h3 className="text-xl font-semibold text-slate-700 mb-2">
-                            {searchQuery ? 'No se encontraron proyectos' : (filter === 'completed' ? 'No hay proyectos completados' : 'No hay proyectos')}
+                            {searchQuery ? 'No se encontraron proyectos' : (filter === 'completed' ? 'No hay proyectos completados' : filter === 'ready' ? 'No hay proyectos listos para publicar' : 'No hay proyectos')}
                         </h3>
                         <p className="text-slate-500 mb-6">
-                            {searchQuery ? 'Intenta con otros términos de búsqueda' : (filter === 'completed' ? 'Completa tareas para terminar proyectos' : 'Comienza creando tu primer proyecto')}
+                            {searchQuery ? 'Intenta con otros términos de búsqueda' : (filter === 'completed' ? 'Completa tareas para terminar proyectos' : filter === 'ready' ? 'Completa todas las tareas para mover proyectos aquí' : 'Comienza creando tu primer proyecto')}
                         </p>
                         {filter === 'active' && !searchQuery && <ProjectForm onProjectCreated={fetchProjects} />}
                     </div>
@@ -329,6 +341,20 @@ export function ProjectsListView() {
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Action Buttons */}
+                                    {(projectProgress[project.id] || 0) === 100 && !project.completed_at && (
+                                        <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+                                            <Button
+                                                size="sm"
+                                                className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto"
+                                                onClick={(e) => markProjectAsCompleted(e, project.id)}
+                                            >
+                                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                                Publicar / Finalizar
+                                            </Button>
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         ))}
@@ -340,6 +366,17 @@ export function ProjectsListView() {
             <div className="max-w-7xl mx-auto mt-12 pb-12">
                 <ProjectProgressChart data={chartData} />
             </div>
+
+            {/* Completion Modal */}
+            {activeCompletionProjectId && (
+                <ProjectCompletionModal
+                    projectId={activeCompletionProjectId}
+                    onClose={() => {
+                        setActiveCompletionProjectId(null)
+                        fetchProjects()
+                    }}
+                />
+            )}
         </div>
     )
 }

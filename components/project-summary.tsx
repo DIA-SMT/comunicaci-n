@@ -6,27 +6,32 @@ import { Project } from "@/types"
 
 interface ProjectSummaryProps {
     projects: Project[]
-    currentFilter: 'active' | 'urgent' | 'due_soon' | 'completed'
-    onFilterChange: (filter: 'active' | 'urgent' | 'due_soon' | 'completed') => void
+    currentFilter: 'active' | 'urgent' | 'due_soon' | 'completed' | 'ready'
+    onFilterChange: (filter: 'active' | 'urgent' | 'due_soon' | 'completed' | 'ready') => void
+    projectProgress: Record<string, number>
 }
 
-export function ProjectSummary({ projects, currentFilter, onFilterChange }: ProjectSummaryProps) {
+export function ProjectSummary({ projects, currentFilter, onFilterChange, projectProgress }: ProjectSummaryProps) {
     const totalProjects = projects.length
 
-    // Active: Not completed
-    const activeProjects = projects.filter(p => !p.completed_at).length
+    // Active: Not completed AND progress < 100
+    const activeProjects = projects.filter(p => !p.completed_at && (projectProgress[p.id] || 0) < 100).length
+
+    // Ready: Not completed AND progress === 100
+    const readyProjects = projects.filter(p => !p.completed_at && (projectProgress[p.id] || 0) === 100).length
 
     // Completed: Has completed_at date
     const completedProjects = projects.filter(p => p.completed_at).length
 
-    // Urgente: Active AND Priority is Urgent (ignoring Overdue)
+    // Urgente: Active AND Priority is Urgent (ignoring Overdue) AND progress < 100
     const urgentProjects = projects.filter(p => {
-        return !p.completed_at && p.priority === 'Urgente'
+        return !p.completed_at && p.priority === 'Urgente' && (projectProgress[p.id] || 0) < 100
     }).length
 
-    // Vencen esta semana: Active AND Deadline is within current calendar week (Mon-Sun)
+    // Vencen esta semana: Active AND Deadline is within current calendar week (Mon-Sun) AND progress < 100
     const dueSoonProjects = projects.filter(p => {
         if (p.completed_at || !p.deadline) return false
+        if ((projectProgress[p.id] || 0) === 100) return false
 
         const today = new Date()
         const currentDay = today.getDay() // 0 = Sunday, 1 = Monday...
@@ -89,6 +94,19 @@ export function ProjectSummary({ projects, currentFilter, onFilterChange }: Proj
                         <div>
                             <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0">Vencen esta semana</p>
                             <h3 className="text-lg font-bold text-slate-800 leading-none">{dueSoonProjects}</h3>
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => onFilterChange('ready')}
+                        className={`flex-1 flex items-center py-2 px-4 transition-all cursor-pointer text-left w-full ${getActiveStyle('ready')}`}
+                    >
+                        <div className="rounded-full p-1.5 bg-purple-100 mr-3 shrink-0">
+                            <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0">Listo PP</p>
+                            <h3 className="text-lg font-bold text-slate-800 leading-none">{readyProjects}</h3>
                         </div>
                     </button>
 
