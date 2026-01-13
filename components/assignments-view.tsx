@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ChevronDown, ChevronUp, ArrowLeft, User } from 'lucide-react'
-
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 
 type TaskWithProject = Task & {
@@ -106,6 +107,39 @@ export function AssignmentsView() {
         setExpandedAssignee(prev => prev === name ? null : name)
     }
 
+    const generateReport = (assigneeName: string, tasks: TaskWithProject[]) => {
+        const doc = new jsPDF()
+
+        // Header
+        doc.setFontSize(20)
+        doc.setTextColor(40, 40, 40)
+        doc.text(`Informe de Tareas: ${assigneeName}`, 14, 22)
+
+        doc.setFontSize(10)
+        doc.setTextColor(100, 100, 100)
+        doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 14, 30)
+
+        // Table
+        const tableData = tasks.map(t => [
+            t.project?.title || 'Sin Proyecto',
+            t.title,
+            t.status || 'Sin empezar',
+            t.notes || '-'
+        ])
+
+        autoTable(doc, {
+            head: [['Proyecto', 'Tarea', 'Estado', 'Notas']],
+            body: tableData,
+            startY: 40,
+            styles: { fontSize: 10, cellPadding: 3 },
+            headStyles: { fillColor: [59, 130, 246] }, // Blue-500
+            alternateRowStyles: { fillColor: [248, 250, 252] } // Slate-50
+        })
+
+        // Save
+        doc.save(`informe_tareas_${assigneeName.replace(/\s+/g, '_').toLowerCase()}.pdf`)
+    }
+
     const getStatusColor = (status: string | null) => {
         switch (status) {
             case 'Terminada':
@@ -122,6 +156,7 @@ export function AssignmentsView() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
             <div className="max-w-7xl mx-auto">
+                {/* ... Header and Title ... */}
                 <Button
                     variant="ghost"
                     onClick={() => router.push('/')}
@@ -137,6 +172,7 @@ export function AssignmentsView() {
                 </div>
 
                 {assignees.length === 0 ? (
+                    // ... Empty State ...
                     <Card className="p-8 text-center">
                         <User className="w-16 h-16 mx-auto text-slate-300 mb-4" />
                         <h3 className="text-xl font-semibold text-slate-700 mb-2">No hay asignaciones</h3>
@@ -171,6 +207,18 @@ export function AssignmentsView() {
                                     </CardHeader>
                                     {isExpanded && (
                                         <CardContent className="pt-4 animate-in slide-in-from-top-2 duration-200">
+                                            <div className="flex justify-end mb-4">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        generateReport(assignee.name, assignee.tasks)
+                                                    }}
+                                                >
+                                                    📄 Descargar Informe
+                                                </Button>
+                                            </div>
                                             <div className="space-y-3">
                                                 {assignee.tasks.map((task) => (
                                                     <div

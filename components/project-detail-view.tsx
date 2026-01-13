@@ -54,12 +54,16 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                 setTasks(tasksWithAssigneesFormatted)
 
                 // Check if all tasks are completed
+                // We no longer auto-show the modal here. The flow is: 
+                // All tasks done -> Project moves to "Listo PP" in list view -> User clicks "Publicar" in list view -> Modal opens.
+                /*
                 const allCompleted = tasksWithAssigneesFormatted.length > 0 &&
                     tasksWithAssigneesFormatted.every((t: Task) => t.status === 'Terminada')
 
                 if (allCompleted && !projectData?.completed_at) {
                     setShowCompletionModal(true)
                 }
+                */
             }
         } catch (error) {
             console.error('Error fetching project data:', error)

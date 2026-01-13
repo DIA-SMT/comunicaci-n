@@ -10,8 +10,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ProjectForm } from '@/components/project-form'
 import { Input } from '@/components/ui/input'
-import { Calendar, FolderKanban, Users, Search, ArrowLeft } from 'lucide-react'
+import { ProjectSummary } from '@/components/project-summary'
+import { Calendar, FolderKanban, Users, Search, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { ProjectProgressChart } from '@/components/project-progress-chart'
+import { ProjectCompletionModal } from '@/components/project-completion-modal'
 
 type ProjectProgress = {
     name: string
@@ -25,9 +27,10 @@ export function ProjectsListView() {
     const [projects, setProjects] = useState<Project[]>([])
     const [loading, setLoading] = useState(true)
     const [loadError, setLoadError] = useState<string | null>(null)
-    const [showCompleted, setShowCompleted] = useState(false)
+    const [filter, setFilter] = useState<'active' | 'urgent' | 'due_soon' | 'completed' | 'ready'>('active')
     const [searchQuery, setSearchQuery] = useState('')
     const [chartData, setChartData] = useState<ProjectProgress[]>([])
+    const [activeCompletionProjectId, setActiveCompletionProjectId] = useState<string | null>(null)
     const { role, user, loading: authLoading } = useAuth()
 
     useEffect(() => {
@@ -46,21 +49,15 @@ export function ProjectsListView() {
         }, 12000)
 
         Promise.all([fetchProjects(), fetchChartData()]).finally(() => window.clearTimeout(t))
-    }, [showCompleted, authLoading, user])
+    }, [authLoading, user])
 
     const fetchProjects = useCallback(async () => {
         try {
             setLoadError(null)
-            let query = supabase
+            const query = supabase
                 .from('projects')
                 .select('*')
                 .order('deadline', { ascending: true })
-
-            if (showCompleted) {
-                query = query.not('completed_at', 'is', null)
-            } else {
-                query = query.is('completed_at', null)
-            }
 
             const { data } = await query
 
@@ -71,7 +68,7 @@ export function ProjectsListView() {
         } finally {
             setLoading(false)
         }
-    }, [showCompleted])
+    }, [])
 
     const fetchChartData = useCallback(async () => {
         try {
@@ -117,6 +114,7 @@ export function ProjectsListView() {
     useEffect(() => {
         if (authLoading) return
         if (!user) return
+        // Fetch only once on mount since we get all projects
         fetchProjects()
         fetchChartData()
     }, [fetchProjects, fetchChartData, authLoading, user])
@@ -148,13 +146,48 @@ export function ProjectsListView() {
         }
     }, [projects])
 
+    const markProjectAsCompleted = (e: React.MouseEvent, projectId: string) => {
+        e.stopPropagation()
+        setActiveCompletionProjectId(projectId)
+    }
+
     const filteredProjects = projects.filter(project => {
-        const searchLower = searchQuery.toLowerCase()
-        return (
-            project.title.toLowerCase().includes(searchLower) ||
-            (project.area && project.area.toLowerCase().includes(searchLower)) ||
-            (project.description && project.description.toLowerCase().includes(searchLower))
-        )
+        const matchesSearch =
+            project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (project.area && project.area.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            (project.description && project.description.toLowerCase().includes(searchQuery.toLowerCase()))
+
+        let matchesFilter = false
+
+        if (filter === 'active') {
+            matchesFilter = project.completed_at === null && (projectProgress[project.id] || 0) < 100
+        } else if (filter === 'completed') {
+            matchesFilter = project.completed_at !== null
+        } else if (filter === 'ready') {
+            matchesFilter = project.completed_at === null && (projectProgress[project.id] || 0) === 100
+        } else if (filter === 'urgent') {
+            matchesFilter = project.completed_at === null && project.priority === 'Urgente' && (projectProgress[project.id] || 0) < 100
+        } else if (filter === 'due_soon') {
+            if (project.completed_at || !project.deadline) {
+                matchesFilter = false
+            } else if ((projectProgress[project.id] || 0) === 100) {
+                matchesFilter = false
+            } else {
+                const today = new Date()
+                const currentDay = today.getDay()
+                const distanceToMonday = currentDay === 0 ? 6 : currentDay - 1
+                const monday = new Date(today)
+                monday.setDate(today.getDate() - distanceToMonday)
+                monday.setHours(0, 0, 0, 0)
+                const sunday = new Date(monday)
+                sunday.setDate(monday.getDate() + 6)
+                sunday.setHours(23, 59, 59, 999)
+                const deadline = new Date(project.deadline)
+                matchesFilter = deadline >= monday && deadline <= sunday
+            }
+        }
+
+        return matchesSearch && matchesFilter
     })
 
     if (authLoading) return <div className="p-8">Cargando sesión...</div>
@@ -182,14 +215,14 @@ export function ProjectsListView() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
             <div className="max-w-7xl mx-auto">
-                {showCompleted && (
+                {filter !== 'active' && (
                     <Button
                         variant="ghost"
-                        onClick={() => setShowCompleted(false)}
+                        onClick={() => setFilter('active')}
                         className="mb-4"
                     >
                         <ArrowLeft className="w-4 h-4 mr-2" />
-                        Volver a proyectos
+                        Volver a activos
                     </Button>
                 )}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -198,13 +231,6 @@ export function ProjectsListView() {
                         <p className="text-slate-600">Gestiona y da seguimiento a tus proyectos</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                        <Button
-                            variant={showCompleted ? "secondary" : "outline"}
-                            onClick={() => setShowCompleted(!showCompleted)}
-                            className="w-full sm:w-auto"
-                        >
-                            {showCompleted ? 'Ver Activos' : 'Ver Completados'}
-                        </Button>
                         <Button variant="outline" onClick={() => router.push('/assignments')} className="w-full sm:w-auto">
                             <Users className="w-4 h-4 mr-2" />
                             Asignaciones
@@ -221,6 +247,14 @@ export function ProjectsListView() {
                     </div>
                 </div>
 
+                {/* Project Summary Dashboard */}
+                <ProjectSummary
+                    projects={projects}
+                    currentFilter={filter}
+                    onFilterChange={setFilter}
+                    projectProgress={projectProgress}
+                />
+
                 {/* Search Bar */}
                 <div className="mb-6 relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -236,12 +270,12 @@ export function ProjectsListView() {
                     <div className="text-center py-16">
                         <FolderKanban className="w-16 h-16 mx-auto text-slate-300 mb-4" />
                         <h3 className="text-xl font-semibold text-slate-700 mb-2">
-                            {searchQuery ? 'No se encontraron proyectos' : (showCompleted ? 'No hay proyectos completados' : 'No hay proyectos activos')}
+                            {searchQuery ? 'No se encontraron proyectos' : (filter === 'completed' ? 'No hay proyectos completados' : filter === 'ready' ? 'No hay proyectos listos para publicar' : 'No hay proyectos')}
                         </h3>
                         <p className="text-slate-500 mb-6">
-                            {searchQuery ? 'Intenta con otros términos de búsqueda' : (showCompleted ? 'Completa tareas para terminar proyectos' : 'Comienza creando tu primer proyecto')}
+                            {searchQuery ? 'Intenta con otros términos de búsqueda' : (filter === 'completed' ? 'Completa tareas para terminar proyectos' : filter === 'ready' ? 'Completa todas las tareas para mover proyectos aquí' : 'Comienza creando tu primer proyecto')}
                         </p>
-                        {!showCompleted && !searchQuery && <ProjectForm onProjectCreated={fetchProjects} />}
+                        {filter === 'active' && !searchQuery && <ProjectForm onProjectCreated={fetchProjects} />}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -307,6 +341,20 @@ export function ProjectsListView() {
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Action Buttons */}
+                                    {(projectProgress[project.id] || 0) === 100 && !project.completed_at && (
+                                        <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+                                            <Button
+                                                size="sm"
+                                                className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto"
+                                                onClick={(e) => markProjectAsCompleted(e, project.id)}
+                                            >
+                                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                                Publicar / Finalizar
+                                            </Button>
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         ))}
@@ -318,6 +366,17 @@ export function ProjectsListView() {
             <div className="max-w-7xl mx-auto mt-12 pb-12">
                 <ProjectProgressChart data={chartData} />
             </div>
+
+            {/* Completion Modal */}
+            {activeCompletionProjectId && (
+                <ProjectCompletionModal
+                    projectId={activeCompletionProjectId}
+                    onClose={() => {
+                        setActiveCompletionProjectId(null)
+                        fetchProjects()
+                    }}
+                />
+            )}
         </div>
     )
 }

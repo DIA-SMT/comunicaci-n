@@ -150,8 +150,17 @@ export function TaskForm({
                             })
 
                             if (!response.ok) {
-                                const errorData = await response.json()
-                                console.error(`Error enviando email a ${member.email}:`, errorData)
+                                const errorText = await response.text()
+                                console.error(`[Client] Error sending email to ${member.email}:`, {
+                                    status: response.status,
+                                    statusText: response.statusText,
+                                    body: errorText
+                                })
+                                // Try to parse if it's JSON
+                                try {
+                                    const errorJson = JSON.parse(errorText)
+                                    console.error('[Client] Parsed error:', errorJson)
+                                } catch (e) { /* ignore */ }
                             }
                         } catch (error) {
                             console.error(`Error enviando email a ${member.email}:`, error)
