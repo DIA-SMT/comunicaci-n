@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import { Label } from '@/components/ui/label'
 export function ProjectForm({ onProjectCreated }: { onProjectCreated: () => void }) {
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
+    const router = useRouter()
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -56,17 +58,21 @@ export function ProjectForm({ onProjectCreated }: { onProjectCreated: () => void
 
         setLoading(true)
         try {
-            const { error } = await supabase.from('projects').insert([
+            const { data, error } = await supabase.from('projects').insert([
                 {
                     ...formData,
                     deadline: formData.deadline || null,
                     status: 'Pendiente'
                 }
-            ])
+            ]).select().single()
             if (error) throw error
             setOpen(false)
             setFormData({ title: '', description: '', area: '', type: '', priority: 'Media', deadline: '' })
             onProjectCreated()
+
+            if (data) {
+                router.push(`/projects/${data.id}`)
+            }
         } catch (error) {
             console.error('Error creating project:', error)
             alert(`Error creating project: ${(error as any).message || 'Unknown error'}`)
