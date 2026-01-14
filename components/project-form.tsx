@@ -46,6 +46,14 @@ export function ProjectForm({ onProjectCreated }: { onProjectCreated: () => void
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
+
+        // Manual validation
+        const { title, description, area, type, priority, deadline } = formData
+        if (!title || !description || !area || !type || !priority || !deadline) {
+            alert('Por favor, complete todos los campos obligatorios.')
+            return
+        }
+
         setLoading(true)
         try {
             const { error } = await supabase.from('projects').insert([
@@ -60,7 +68,6 @@ export function ProjectForm({ onProjectCreated }: { onProjectCreated: () => void
             setFormData({ title: '', description: '', area: '', type: '', priority: 'Media', deadline: '' })
             onProjectCreated()
         } catch (error) {
-            console.error('Error creating project:', error)
             console.error('Error creating project:', error)
             alert(`Error creating project: ${(error as any).message || 'Unknown error'}`)
         } finally {
@@ -99,6 +106,7 @@ export function ProjectForm({ onProjectCreated }: { onProjectCreated: () => void
                             id="description"
                             value={formData.description}
                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            required
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -114,6 +122,7 @@ export function ProjectForm({ onProjectCreated }: { onProjectCreated: () => void
                                 onFocus={() => setShowSuggestions(true)}
                                 placeholder="Ej: Cultura"
                                 autoComplete="off"
+                                required
                             />
                             {showSuggestions && formData.area && filteredAreas.length > 0 && (
                                 <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto top-[70px]">
@@ -140,6 +149,7 @@ export function ProjectForm({ onProjectCreated }: { onProjectCreated: () => void
                                 value={formData.type}
                                 onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                                 placeholder="Ej: Video"
+                                required
                             />
                         </div>
                     </div>
