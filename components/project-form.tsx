@@ -66,12 +66,15 @@ export function ProjectForm({ onProjectCreated }: { onProjectCreated: () => void
                 }
             ]).select().single()
             if (error) throw error
-            setOpen(false)
-            setFormData({ title: '', description: '', area: '', type: '', priority: 'Media', deadline: '' })
-            onProjectCreated()
-
             if (data) {
                 router.push(`/projects/${data.id}`)
+                onProjectCreated() // Update list in background or for back navigation
+                setOpen(false)
+                setFormData({ title: '', description: '', area: '', type: '', priority: 'Media', deadline: '' })
+            } else {
+                // Fallback if no data returned for some reason
+                setOpen(false)
+                onProjectCreated()
             }
         } catch (error) {
             console.error('Error creating project:', error)

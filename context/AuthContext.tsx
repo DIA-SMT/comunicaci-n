@@ -121,12 +121,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     return
                 }
 
-                setSession(newSession)
-                setUser(newSession?.user ?? null)
+                // Avoid unnecessary updates if the user is the same
+                if (newSession?.user?.id !== lastUserId.current) {
+                    setSession(newSession)
+                    setUser(newSession?.user ?? null)
 
-                if (newSession?.user) {
-                    // Only fetch role if user ID has changed or we don't have a role yet
-                    if (newSession.user.id !== lastUserId.current) {
+                    if (newSession?.user) {
                         lastUserId.current = newSession.user.id
                         const { data: profile } = await supabase
                             .from('profiles')
@@ -135,10 +135,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             .maybeSingle()
 
                         setRole(profile?.role as 'admin' | 'common' || 'common')
+                    } else {
+                        lastUserId.current = null
+                        setRole(null)
                     }
-                } else {
-                    lastUserId.current = null
+                } else if (!newSession && lastUserId.current) {
+                    // Handle logout / session expiry where newSession is null but we had a user
+                    setSession(null)
+                    setUser(null)
                     setRole(null)
+                    lastUserId.current = null
                 }
             } catch (error) {
                 console.error('Error in onAuthStateChange:', error)

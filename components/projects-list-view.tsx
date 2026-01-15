@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button'
 import { ProjectForm } from '@/components/project-form'
 import { Input } from '@/components/ui/input'
 import { ProjectSummary } from '@/components/project-summary'
-import { Calendar, FolderKanban, Users, Search, ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Calendar, FolderKanban, Users, Search, ArrowLeft, CheckCircle2, LayoutGrid, List } from 'lucide-react'
 import { ProjectProgressChart } from '@/components/project-progress-chart'
 import { ProjectCompletionModal } from '@/components/project-completion-modal'
 
@@ -29,6 +30,7 @@ export function ProjectsListView() {
     const [loadError, setLoadError] = useState<string | null>(null)
     const [filter, setFilter] = useState<'active' | 'urgent' | 'due_soon' | 'completed' | 'ready'>('active')
     const [searchQuery, setSearchQuery] = useState('')
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
     const [chartData, setChartData] = useState<ProjectProgress[]>([])
     const [activeCompletionProjectId, setActiveCompletionProjectId] = useState<string | null>(null)
     const { role, user, loading: authLoading } = useAuth()
@@ -49,7 +51,7 @@ export function ProjectsListView() {
         }, 12000)
 
         Promise.all([fetchProjects(), fetchChartData()]).finally(() => window.clearTimeout(t))
-    }, [authLoading, user])
+    }, [authLoading, user?.id])
 
     const fetchProjects = useCallback(async () => {
         try {
@@ -117,7 +119,7 @@ export function ProjectsListView() {
         // Fetch only once on mount since we get all projects
         fetchProjects()
         fetchChartData()
-    }, [fetchProjects, fetchChartData, authLoading, user])
+    }, [fetchProjects, fetchChartData, authLoading, user?.id])
 
     async function getProjectProgress(projectId: string) {
         const { data: tasks } = await supabase
@@ -149,6 +151,25 @@ export function ProjectsListView() {
     const markProjectAsCompleted = (e: React.MouseEvent, projectId: string) => {
         e.stopPropagation()
         setActiveCompletionProjectId(projectId)
+    }
+
+    const updateProjectPriority = async (projectId: string, newPriority: string) => {
+        // Optimistic update
+        const oldProjects = [...projects]
+        setProjects(projects.map(p =>
+            p.id === projectId ? { ...p, priority: newPriority } : p
+        ))
+
+        const { error } = await supabase
+            .from('projects')
+            .update({ priority: newPriority })
+            .eq('id', projectId)
+
+        if (error) {
+            console.error('Error updating priority:', error)
+            setProjects(oldProjects) // Revert
+            // Could add a toast here
+        }
     }
 
     const filteredProjects = projects.filter(project => {
@@ -255,15 +276,35 @@ export function ProjectsListView() {
                     projectProgress={projectProgress}
                 />
 
-                {/* Search Bar */}
-                <div className="mb-6 relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                    <Input
-                        placeholder="Buscar por nombre, área o descripción..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 max-w-md bg-white"
-                    />
+                {/* View Toggle and Search */}
+                <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-between items-center">
+                    <div className="relative w-full sm:w-96">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                        <Input
+                            placeholder="Buscar por nombre, área o descripción..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-10 bg-white"
+                        />
+                    </div>
+                    <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setViewMode('grid')}
+                            className={`h-8 w-8 p-0 hover:bg-white ${viewMode === 'grid' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
+                        >
+                            <LayoutGrid className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setViewMode('list')}
+                            className={`h-8 w-8 p-0 hover:bg-white ${viewMode === 'list' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
+                        >
+                            <List className="w-4 h-4" />
+                        </Button>
+                    </div>
                 </div>
 
                 {filteredProjects.length === 0 ? (
@@ -278,87 +319,199 @@ export function ProjectsListView() {
                         {filter === 'active' && !searchQuery && <ProjectForm onProjectCreated={fetchProjects} />}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredProjects.map((project) => (
-                            <Card
-                                key={project.id}
-                                className={`hover:shadow-lg transition-all cursor-pointer hover:scale-105 ${project.priority === 'Urgente' ? 'bg-red-50 hover:bg-red-100' :
-                                    project.priority === 'Alta' ? 'bg-orange-50 hover:bg-orange-100' :
-                                        project.priority === 'Media' ? 'bg-yellow-50 hover:bg-yellow-100' :
-                                            'bg-emerald-50 hover:bg-emerald-100'
-                                    }`}
-                                onClick={() => router.push(`/projects/${project.id}`)}
-                            >
-                                <CardHeader className="pb-3">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <CardTitle className="text-lg font-bold line-clamp-2">
-                                            {project.title}
-                                        </CardTitle>
-                                        <Badge
-                                            variant={project.priority === 'Urgente' ? 'destructive' : 'secondary'}
-                                            className="ml-2 shrink-0"
-                                        >
-                                            {project.priority}
-                                        </Badge>
-                                    </div>
-                                    <div className="flex gap-2 text-xs text-slate-500">
-                                        {project.area && <span className="bg-slate-100 px-2 py-1 rounded">{project.area}</span>}
-                                        {project.type && <span className="bg-slate-100 px-2 py-1 rounded">{project.type}</span>}
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    {project.description && (
-                                        <p className="text-sm text-slate-600 mb-4 line-clamp-2">{project.description}</p>
-                                    )}
+                    <>
+                        {viewMode === 'grid' ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {filteredProjects.map((project) => (
+                                    <Card
+                                        key={project.id}
+                                        className={`hover:shadow-lg transition-all cursor-pointer hover:scale-105 ${project.priority === 'Urgente' ? 'bg-red-50 hover:bg-red-100' :
+                                            project.priority === 'Alta' ? 'bg-orange-50 hover:bg-orange-100' :
+                                                project.priority === 'Media' ? 'bg-yellow-50 hover:bg-yellow-100' :
+                                                    'bg-emerald-50 hover:bg-emerald-100'
+                                            }`}
+                                        onClick={() => router.push(`/projects/${project.id}`)}
+                                    >
+                                        <CardHeader className="pb-3">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <CardTitle className="text-lg font-bold line-clamp-2">
+                                                    {project.title}
+                                                </CardTitle>
+                                                {role === 'admin' ? (
+                                                    <div onClick={(e) => e.stopPropagation()}>
+                                                        <Select
+                                                            value={project.priority || 'Media'}
+                                                            onValueChange={(value) => updateProjectPriority(project.id, value)}
+                                                        >
+                                                            <SelectTrigger className={`w-[110px] h-8 ml-2 ${project.priority === 'Urgente' ? 'bg-red-100 text-red-800 border-red-200' :
+                                                                project.priority === 'Alta' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                                                                    project.priority === 'Media' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                                                                        'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                                                }`}>
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Baja">Baja</SelectItem>
+                                                                <SelectItem value="Media">Media</SelectItem>
+                                                                <SelectItem value="Alta">Alta</SelectItem>
+                                                                <SelectItem value="Urgente">Urgente</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                ) : (
+                                                    <Badge
+                                                        variant={project.priority === 'Urgente' ? 'destructive' : 'secondary'}
+                                                        className="ml-2 shrink-0"
+                                                    >
+                                                        {project.priority}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <div className="flex gap-2 text-xs text-slate-500">
+                                                {project.area && <span className="bg-slate-100 px-2 py-1 rounded">{project.area}</span>}
+                                                {project.type && <span className="bg-slate-100 px-2 py-1 rounded">{project.type}</span>}
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent>
+                                            {project.description && (
+                                                <p className="text-sm text-slate-600 mb-4 line-clamp-2">{project.description}</p>
+                                            )}
 
-                                    {/* Progress Bar */}
-                                    <div className="mb-3">
-                                        <div className="flex justify-between text-xs text-slate-600 mb-1">
-                                            <span>Progreso</span>
-                                            <span className="font-semibold">{projectProgress[project.id] || 0}%</span>
-                                        </div>
-                                        <div className="w-full bg-slate-200 rounded-full h-2">
-                                            <div
-                                                className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all"
-                                                style={{ width: `${projectProgress[project.id] || 0}%` }}
-                                            />
-                                        </div>
-                                    </div>
+                                            {/* Progress Bar */}
+                                            <div className="mb-3">
+                                                <div className="flex justify-between text-xs text-slate-600 mb-1">
+                                                    <span>Progreso</span>
+                                                    <span className="font-semibold">{projectProgress[project.id] || 0}%</span>
+                                                </div>
+                                                <div className="w-full bg-slate-200 rounded-full h-2">
+                                                    <div
+                                                        className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all"
+                                                        style={{ width: `${projectProgress[project.id] || 0}%` }}
+                                                    />
+                                                </div>
+                                            </div>
 
-                                    <div className="flex items-center justify-between text-sm">
-                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${project.status === 'En Progreso' ? 'bg-green-100 text-green-800' :
-                                            project.status === 'Completado' ? 'bg-blue-100 text-blue-800' :
-                                                'bg-yellow-100 text-yellow-800'
-                                            }`}>
-                                            {project.status}
-                                        </span>
-                                        {project.deadline && (
-                                            <div className="flex items-center gap-1 text-slate-500">
-                                                <Calendar className="w-4 h-4" />
-                                                <span className="text-xs">
-                                                    {new Date(project.deadline).toLocaleDateString()}
+                                            <div className="flex items-center justify-between text-sm">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${project.status === 'En Progreso' ? 'bg-green-100 text-green-800' :
+                                                    project.status === 'Completado' ? 'bg-blue-100 text-blue-800' :
+                                                        'bg-yellow-100 text-yellow-800'
+                                                    }`}>
+                                                    {project.status}
+                                                </span>
+                                                {project.deadline && (
+                                                    <div className="flex items-center gap-1 text-slate-500">
+                                                        <Calendar className="w-4 h-4" />
+                                                        <span className="text-xs">
+                                                            {new Date(project.deadline).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Action Buttons */}
+                                            {(projectProgress[project.id] || 0) === 100 && !project.completed_at && (
+                                                <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+                                                    <Button
+                                                        size="sm"
+                                                        className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto"
+                                                        onClick={(e) => markProjectAsCompleted(e, project.id)}
+                                                    >
+                                                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                                                        Publicar / Finalizar
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                                {filteredProjects.map((project, index) => (
+                                    <div
+                                        key={project.id}
+                                        onClick={() => router.push(`/projects/${project.id}`)}
+                                        className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 cursor-pointer transition-colors ${index !== filteredProjects.length - 1 ? 'border-b border-slate-100' : ''} ${project.priority === 'Urgente' ? 'hover:bg-red-50' :
+                                            project.priority === 'Alta' ? 'hover:bg-orange-50' :
+                                                project.priority === 'Media' ? 'hover:bg-yellow-50' :
+                                                    'hover:bg-emerald-50'
+                                            }`}
+                                    >
+                                        <div className="flex-1 min-w-0 mr-4 mb-3 sm:mb-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="font-semibold text-slate-900 truncate">{project.title}</h3>
+                                                {project.area && (
+                                                    <span className="hidden sm:inline-block px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs">
+                                                        {project.area}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-4 text-xs text-slate-500">
+                                                {project.deadline && (
+                                                    <div className="flex items-center gap-1">
+                                                        <Calendar className="w-3 h-3" />
+                                                        <span>{new Date(project.deadline).toLocaleDateString()}</span>
+                                                    </div>
+                                                )}
+                                                <span className={`${project.status === 'En Progreso' ? 'text-green-600' :
+                                                    project.status === 'Completado' ? 'text-blue-600' :
+                                                        'text-yellow-600'
+                                                    }`}>
+                                                    {project.status}
                                                 </span>
                                             </div>
-                                        )}
-                                    </div>
-
-                                    {/* Action Buttons */}
-                                    {(projectProgress[project.id] || 0) === 100 && !project.completed_at && (
-                                        <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
-                                            <Button
-                                                size="sm"
-                                                className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto"
-                                                onClick={(e) => markProjectAsCompleted(e, project.id)}
-                                            >
-                                                <CheckCircle2 className="w-4 h-4 mr-2" />
-                                                Publicar / Finalizar
-                                            </Button>
                                         </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
+
+                                        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                                            {/* Progress (Mini) */}
+                                            <div className="flex items-center gap-2 w-24">
+                                                <div className="w-full bg-slate-200 rounded-full h-1.5">
+                                                    <div
+                                                        className="bg-blue-600 h-1.5 rounded-full"
+                                                        style={{ width: `${projectProgress[project.id] || 0}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-xs font-medium text-slate-600 text-right w-8">
+                                                    {projectProgress[project.id] || 0}%
+                                                </span>
+                                            </div>
+
+                                            {/* Priority Selector (Admin) or Badge */}
+                                            {role === 'admin' ? (
+                                                <div onClick={(e) => e.stopPropagation()}>
+                                                    <Select
+                                                        value={project.priority || 'Media'}
+                                                        onValueChange={(value) => updateProjectPriority(project.id, value)}
+                                                    >
+                                                        <SelectTrigger className={`w-[100px] h-8 text-xs ${project.priority === 'Urgente' ? 'bg-red-100 text-red-800 border-red-200' :
+                                                            project.priority === 'Alta' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                                                                project.priority === 'Media' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                                                                    'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                                            }`}>
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="Baja">Baja</SelectItem>
+                                                            <SelectItem value="Media">Media</SelectItem>
+                                                            <SelectItem value="Alta">Alta</SelectItem>
+                                                            <SelectItem value="Urgente">Urgente</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            ) : (
+                                                <Badge
+                                                    variant={project.priority === 'Urgente' ? 'destructive' : 'secondary'}
+                                                    className="ml-2 shrink-0"
+                                                >
+                                                    {project.priority}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 
