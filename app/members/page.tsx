@@ -30,7 +30,7 @@ export default function MembersPage() {
     const [loading, setLoading] = useState(true)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [editingMember, setEditingMember] = useState<Member | null>(null)
-    const [formData, setFormData] = useState({ full_name: '', email: '' })
+    const [formData, setFormData] = useState({ full_name: '', email: '', password: '' })
     const [saveLoading, setSaveLoading] = useState(false)
 
     useEffect(() => {
@@ -69,22 +69,29 @@ export default function MembersPage() {
 
                 if (error) throw error
             } else {
-                const { error } = await supabase
-                    .from('members')
-                    .insert([{
-                        full_name: formData.full_name,
-                        email: formData.email || null
-                    }])
+                // Call Admin API to create user
+                const response = await fetch('/api/admin/create-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: formData.email,
+                        password: formData.password,
+                        full_name: formData.full_name
+                    })
+                })
 
-                if (error) throw error
+                if (!response.ok) {
+                    const errorData = await response.json()
+                    throw new Error(errorData.error || 'Error creando usuario')
+                }
             }
 
             setIsDialogOpen(false)
             fetchMembers()
             resetForm()
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving member:', error)
-            alert('Error al guardar el miembro')
+            alert(error.message || 'Error al guardar el miembro')
         } finally {
             setSaveLoading(false)
         }
@@ -109,14 +116,15 @@ export default function MembersPage() {
 
     function resetForm() {
         setEditingMember(null)
-        setFormData({ full_name: '', email: '' })
+        setFormData({ full_name: '', email: '', password: '' })
     }
 
     function openEditDialog(member: Member) {
         setEditingMember(member)
         setFormData({
             full_name: member.full_name,
-            email: member.email || ''
+            email: member.email || '',
+            password: ''
         })
         setIsDialogOpen(true)
     }
@@ -168,6 +176,18 @@ export default function MembersPage() {
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 />
                             </div>
+                            {!editingMember && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="password">Contraseña</Label>
+                                    <Input
+                                        id="password"
+                                        type="password"
+                                        value={formData.password}
+                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                            )}
                             <Button type="submit" className="w-full" disabled={saveLoading}>
                                 {saveLoading ? 'Guardando...' : 'Guardar'}
                             </Button>
