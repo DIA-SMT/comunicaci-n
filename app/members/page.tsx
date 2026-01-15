@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Pencil, Trash2, Plus } from 'lucide-react'
+import { ArrowLeft, Pencil, Plus } from 'lucide-react'
 
 export default function MembersPage() {
     const router = useRouter()
@@ -63,7 +63,7 @@ export default function MembersPage() {
                     .from('members')
                     .update({
                         full_name: formData.full_name,
-                        email: formData.email || null // Handle empty string as null
+                        // email is permanent
                     })
                     .eq('id', editingMember.id)
 
@@ -90,22 +90,7 @@ export default function MembersPage() {
         }
     }
 
-    async function handleDelete(id: string) {
-        if (!confirm('¿Estás seguro de que quieres eliminar este miembro?')) return
 
-        try {
-            const { error } = await supabase
-                .from('members')
-                .delete()
-                .eq('id', id)
-
-            if (error) throw error
-            fetchMembers()
-        } catch (error) {
-            console.error('Error deleting member:', error)
-            alert('Error al eliminar el miembro')
-        }
-    }
 
     function resetForm() {
         setEditingMember(null)
@@ -166,6 +151,7 @@ export default function MembersPage() {
                                     type="email"
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    disabled={!!editingMember}
                                 />
                             </div>
                             <Button type="submit" className="w-full" disabled={saveLoading}>
@@ -199,14 +185,7 @@ export default function MembersPage() {
                                         >
                                             <Pencil className="w-4 h-4" />
                                         </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="text-red-500 hover:text-red-600"
-                                            onClick={() => handleDelete(member.id)}
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
+
                                     </div>
                                 </TableCell>
                             </TableRow>
