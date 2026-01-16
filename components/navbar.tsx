@@ -5,13 +5,15 @@ import './navbar.css'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
+import { useTheme } from '@/context/ThemeContext'
 import { Button } from '@/components/ui/button'
-import { LogOut, User as UserIcon } from 'lucide-react'
+import { LogOut, User as UserIcon, Moon, Sun } from 'lucide-react'
 
 import Link from 'next/link'
 
 export function Navbar() {
     const { user, signOut } = useAuth()
+    const { theme, toggleTheme } = useTheme()
     const router = useRouter()
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
@@ -46,6 +48,15 @@ export function Navbar() {
                             </Link>
                             <Button
                                 variant="ghost"
+                                size="icon"
+                                onClick={toggleTheme}
+                                className="text-white hover:text-white/80 hover:bg-white/10 transition-all"
+                                title={theme === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
+                            >
+                                {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                            </Button>
+                            <Button
+                                variant="ghost"
                                 size="sm"
                                 onClick={handleSignOut}
                                 className="text-white hover:text-white/80 hover:bg-white/10"
@@ -78,6 +89,18 @@ export function Navbar() {
                                     <UserIcon className="h-4 w-4" />
                                     <span className="text-sm font-medium">{user.email}</span>
                                 </Link>
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => {
+                                        toggleTheme()
+                                        setIsMobileMenuOpen(false)
+                                    }}
+                                    className="w-full max-w-xs flex items-center justify-center gap-2"
+                                >
+                                    {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                                    {theme === 'light' ? 'Modo Oscuro' : 'Modo Claro'}
+                                </Button>
                                 <Button
                                     variant="secondary"
                                     size="sm"
