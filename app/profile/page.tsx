@@ -16,16 +16,6 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(false)
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
     const router = useRouter()
-    const passwordRequirementText =
-        'Por motivos de seguridad, se exige que toda contraseña tenga como mínimo 8 caracteres e incluya, como estándar, al menos una letra mayúscula, una letra minúscula, un número y un carácter especial. El sistema no permite guardar contraseñas que no cumplan con ese criterio y recomienda no reutilizar claves usadas en otros servicios.'
-
-    const meetsPasswordRequirements = (value: string) => {
-        const hasUppercase = /[A-Z]/.test(value)
-        const hasLowercase = /[a-z]/.test(value)
-        const hasNumber = /\d/.test(value)
-        const hasSpecial = /[^A-Za-z0-9]/.test(value)
-        return value.length >= 8 && hasUppercase && hasLowercase && hasNumber && hasSpecial
-    }
 
     const handleUpdatePassword = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -38,8 +28,8 @@ export default function ProfilePage() {
             return
         }
 
-        if (!meetsPasswordRequirements(password)) {
-            setMessage({ type: 'error', text: passwordRequirementText })
+        if (password.length < 6) {
+            setMessage({ type: 'error', text: 'La contraseña debe tener al menos 6 caracteres' })
             setLoading(false)
             return
         }
@@ -89,9 +79,6 @@ export default function ProfilePage() {
                                         <h3 className="text-lg font-medium">Cambiar Contraseña</h3>
                                         <p className="text-sm text-slate-500">
                                             Ingresa tu nueva contraseña para actualizarla.
-                                        </p>
-                                        <p className="text-sm text-slate-500">
-                                            {passwordRequirementText}
                                         </p>
                                     </div>
 
