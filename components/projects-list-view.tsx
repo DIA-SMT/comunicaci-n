@@ -33,6 +33,7 @@ export function ProjectsListView() {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
     const [chartData, setChartData] = useState<ProjectProgress[]>([])
     const [activeCompletionProjectId, setActiveCompletionProjectId] = useState<string | null>(null)
+    const [projectProgress, setProjectProgress] = useState<Record<string, number>>({})
     const { role, user, loading: authLoading } = useAuth()
 
     useEffect(() => {
@@ -50,7 +51,7 @@ export function ProjectsListView() {
             setLoadError('La carga tardó demasiado. Reintentá.')
         }, 12000)
 
-        Promise.all([fetchProjects(), fetchChartData()]).finally(() => window.clearTimeout(t))
+        Promise.all([fetchProjects(), fetchTasksAndProgress()]).finally(() => window.clearTimeout(t))
     }, [authLoading, user?.id])
 
     const fetchProjects = useCallback(async () => {
@@ -72,7 +73,7 @@ export function ProjectsListView() {
         }
     }, [])
 
-    const fetchChartData = useCallback(async () => {
+    const fetchTasksAndProgress = useCallback(async () => {
         try {
             setLoadError(null)
             const { data: allTasks } = await supabase
@@ -80,13 +81,17 @@ export function ProjectsListView() {
                 .select('*, projects(*)')
 
             const progressMap = new Map<string, ProjectProgress>()
+            const progressState: Record<string, number> = {}
 
             if (allTasks) {
                 // Define a type for the joined query result
                 type TaskWithProject = Task & { projects: Project | null }
 
                 (allTasks as unknown as TaskWithProject[]).forEach((task) => {
+                    const projectId = task.project_id
                     const projectName = task.projects?.title || 'Sin Proyecto'
+
+                    // Chart Data Calculation
                     if (!progressMap.has(projectName)) {
                         progressMap.set(projectName, {
                             name: projectName,
@@ -103,50 +108,45 @@ export function ProjectsListView() {
                     } else {
                         stats.remaining++
                     }
+
+                    // Progress State Calculation (per project ID)
+                    if (projectId) {
+                        if (!progressState[projectId]) {
+                            // Initialize with temporary count to compute percentage later
+                            // We'll store: { total: count, completed: count } temporarily in a Map?
+                            // No, let's better rebuild strictly for IDs.
+                        }
+                    }
+                })
+
+                // Cleaner approach: Calculate per-projectID progress
+                const projectStats: Record<string, { total: number, completed: number }> = {}
+
+                allTasks.forEach((task) => {
+                    if (!task.project_id) return
+                    if (!projectStats[task.project_id]) {
+                        projectStats[task.project_id] = { total: 0, completed: 0 }
+                    }
+                    projectStats[task.project_id].total++
+                    if (task.status === 'Terminada') {
+                        projectStats[task.project_id].completed++
+                    }
+                })
+
+                Object.keys(projectStats).forEach(projectId => {
+                    const stats = projectStats[projectId]
+                    progressState[projectId] = Math.round((stats.completed / stats.total) * 100)
                 })
             }
 
             setChartData(Array.from(progressMap.values()).sort((a, b) => b.total - a.total))
+            setProjectProgress(progressState)
         } catch (error) {
-            console.error('Error fetching chart data:', error)
-            setLoadError('No se pudieron cargar los datos del gráfico.')
+            console.error('Error fetching tasks and progress:', error)
+            setLoadError('No se pudieron cargar los datos de progreso.')
         }
     }, [])
 
-    useEffect(() => {
-        if (authLoading) return
-        if (!user) return
-        // Fetch only once on mount since we get all projects
-        fetchProjects()
-        fetchChartData()
-    }, [fetchProjects, fetchChartData, authLoading, user?.id])
-
-    async function getProjectProgress(projectId: string) {
-        const { data: tasks } = await supabase
-            .from('tasks')
-            .select('status')
-            .eq('project_id', projectId)
-
-        if (!tasks || tasks.length === 0) return 0
-
-        const completed = tasks.filter(t => t.status === 'Terminada').length
-        return Math.round((completed / tasks.length) * 100)
-    }
-
-    const [projectProgress, setProjectProgress] = useState<Record<string, number>>({})
-
-    useEffect(() => {
-        async function loadProgress() {
-            const progress: Record<string, number> = {}
-            for (const project of projects) {
-                progress[project.id] = await getProjectProgress(project.id)
-            }
-            setProjectProgress(progress)
-        }
-        if (projects.length > 0) {
-            loadProgress()
-        }
-    }, [projects])
 
     const markProjectAsCompleted = (e: React.MouseEvent, projectId: string) => {
         e.stopPropagation()
@@ -224,7 +224,7 @@ export function ProjectsListView() {
                         setLoading(true)
                         setLoadError(null)
                         fetchProjects()
-                        fetchChartData()
+                        fetchTasksAndProgress()
                     }}
                 >
                     Reintentar
@@ -409,7 +409,7 @@ export function ProjectsListView() {
                                             </div>
 
                                             {/* Action Buttons */}
-                                            {(projectProgress[project.id] || 0) === 100 && !project.completed_at && (
+                                            {(projectProgress[project.id] || 0) === 100 && !project.completed_at && role === 'admin' && (
                                                 <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
                                                     <Button
                                                         size="sm"

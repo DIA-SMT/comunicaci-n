@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { X, Pencil, Trash2 } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 
 type TaskWithAssignees = Task & {
     assignees: TaskAssignee[]
@@ -38,6 +39,7 @@ export function TaskEditForm({
         notes: task.notes || '',
         link: task.link || ''
     })
+    const { role } = useAuth()
 
     const fetchMembers = useCallback(async () => {
         const { data } = await supabase
@@ -307,15 +309,17 @@ export function TaskEditForm({
                             />
                         </div>
                         <div className="flex gap-2 justify-between mt-4">
-                            <Button
-                                type="button"
-                                variant="destructive"
-                                onClick={handleDelete}
-                                disabled={deleting}
-                            >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                {deleting ? 'Eliminando...' : 'Eliminar'}
-                            </Button>
+                            {role === 'admin' && (
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    onClick={handleDelete}
+                                    disabled={deleting}
+                                >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    {deleting ? 'Eliminando...' : 'Eliminar'}
+                                </Button>
+                            )}
                             <div className="flex gap-2">
                                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                                     Cancelar
