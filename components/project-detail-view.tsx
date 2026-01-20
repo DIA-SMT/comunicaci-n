@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TaskForm } from '@/components/task-form'
 import { TaskEditForm } from '@/components/task-edit-form'
 import { ProjectCompletionModal } from '@/components/project-completion-modal'
+import { TaskCompletionModal } from '@/components/task-completion-modal'
 import { ArrowLeft, Calendar, CheckCircle2, Circle, Clock } from 'lucide-react'
 
 type TaskWithAssignees = Task & {
@@ -23,6 +24,7 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
     const [tasks, setTasks] = useState<TaskWithAssignees[]>([])
     const [loading, setLoading] = useState(true)
     const [showCompletionModal, setShowCompletionModal] = useState(false)
+    const [activeTaskForCompletion, setActiveTaskForCompletion] = useState<TaskWithAssignees | null>(null)
 
     const fetchProjectData = useCallback(async () => {
         try {
@@ -126,10 +128,23 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                                 Análisis de Finalización
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-4">
                             <p className="text-amber-900/80 leading-relaxed whitespace-pre-wrap font-medium">
                                 {project.completion_analysis}
                             </p>
+                            {project.upload_link && (
+                                <div className="pt-2 border-t border-amber-200">
+                                    <a
+                                        href={project.upload_link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 text-amber-700 hover:text-amber-900 font-bold underline transition-colors"
+                                    >
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        Ver material del proyecto (Drive/Enlace) →
+                                    </a>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 )}
@@ -226,7 +241,12 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                                                         disabled={!!project.completed_at}
                                                         value={task.status || 'Sin empezar'}
                                                         onValueChange={async (newStatus) => {
-                                                            // Optimistic update
+                                                            if (newStatus === 'Terminada') {
+                                                                setActiveTaskForCompletion(task)
+                                                                return
+                                                            }
+
+                                                            // Optimistic update for non-terminal statuses
                                                             const previousTasks = [...tasks]
                                                             setTasks(tasks.map(t =>
                                                                 t.id === task.id ? { ...t, status: newStatus } : t
@@ -309,6 +329,33 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                         onClose={() => {
                             setShowCompletionModal(false)
                             fetchProjectData()
+                        }}
+                    />
+                )}
+
+                {/* Task Completion Modal (Comments) */}
+                {activeTaskForCompletion && (
+                    <TaskCompletionModal
+                        taskTitle={activeTaskForCompletion.title}
+                        existingNotes={activeTaskForCompletion.notes}
+                        isOpen={true}
+                        onClose={() => setActiveTaskForCompletion(null)}
+                        onConfirm={async (notes) => {
+                            try {
+                                const { error } = await supabase
+                                    .from('tasks')
+                                    .update({
+                                        status: 'Terminada',
+                                        notes: notes || null
+                                    })
+                                    .eq('id', activeTaskForCompletion.id)
+
+                                if (error) throw error
+                                fetchProjectData()
+                            } catch (error) {
+                                console.error('Error finalizando tarea:', error)
+                                alert('Error al finalizar la tarea')
+                            }
                         }}
                     />
                 )}

@@ -408,6 +408,22 @@ export function ProjectsListView() {
                                                 )}
                                             </div>
 
+                                            {/* Finalized Project Link */}
+                                            {project.completed_at && project.upload_link && (
+                                                <div className="mt-3 pt-3 border-t border-slate-200">
+                                                    <a
+                                                        href={project.upload_link}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-xs text-blue-600 hover:text-blue-800 font-bold underline flex items-center gap-1"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <CheckCircle2 className="w-3 h-3" />
+                                                        Ver material finalizado →
+                                                    </a>
+                                                </div>
+                                            )}
+
                                             {/* Action Buttons */}
                                             {(projectProgress[project.id] || 0) === 100 && !project.completed_at && role === 'admin' && (
                                                 <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
