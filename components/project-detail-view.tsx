@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/context/AuthContext'
 import { Project, Task, TaskAssignee } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -11,7 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TaskForm } from '@/components/task-form'
 import { TaskEditForm } from '@/components/task-edit-form'
 import { ProjectCompletionModal } from '@/components/project-completion-modal'
-import { ArrowLeft, Calendar, CheckCircle2, Circle, Clock } from 'lucide-react'
+import { TaskCompletionModal } from '@/components/task-completion-modal'
+import { ArrowLeft, Calendar, CheckCircle2, Circle, Clock, Pencil, Check, X } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 
 type TaskWithAssignees = Task & {
     assignees: TaskAssignee[]
@@ -19,10 +22,14 @@ type TaskWithAssignees = Task & {
 
 export function ProjectDetailView({ projectId }: { projectId: string }) {
     const router = useRouter()
+    const { role } = useAuth()
     const [project, setProject] = useState<Project | null>(null)
     const [tasks, setTasks] = useState<TaskWithAssignees[]>([])
     const [loading, setLoading] = useState(true)
     const [showCompletionModal, setShowCompletionModal] = useState(false)
+    const [activeTaskForCompletion, setActiveTaskForCompletion] = useState<TaskWithAssignees | null>(null)
+    const [isEditingTitle, setIsEditingTitle] = useState(false)
+    const [editedTitle, setEditedTitle] = useState('')
 
     const fetchProjectData = useCallback(async () => {
         try {
@@ -90,6 +97,42 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
         }
     }
 
+    const updateProjectTitle = async () => {
+        if (!editedTitle.trim()) {
+            alert('El título no puede estar vacío')
+            return
+        }
+
+        if (editedTitle === project?.title) {
+            setIsEditingTitle(false)
+            return
+        }
+
+        const oldTitle = project?.title
+
+        // Optimistic update
+        if (project) {
+            setProject({ ...project, title: editedTitle })
+        }
+        setIsEditingTitle(false)
+
+        try {
+            const { error } = await supabase
+                .from('projects')
+                .update({ title: editedTitle })
+                .eq('id', projectId)
+
+            if (error) throw error
+        } catch (error) {
+            console.error('Error updating project title:', error)
+            alert('No se pudo actualizar el título del proyecto')
+            // Rollback
+            if (project && oldTitle) {
+                setProject({ ...project, title: oldTitle })
+            }
+        }
+    }
+
     const getStatusColor = (status: string | null) => {
         switch (status) {
             case 'Terminada':
@@ -126,10 +169,23 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                                 Análisis de Finalización
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-4">
                             <p className="text-amber-900/80 leading-relaxed whitespace-pre-wrap font-medium">
                                 {project.completion_analysis}
                             </p>
+                            {project.upload_link && (
+                                <div className="pt-2 border-t border-amber-200">
+                                    <a
+                                        href={project.upload_link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 text-amber-700 hover:text-amber-900 font-bold underline transition-colors"
+                                    >
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        Ver material del proyecto (Drive/Enlace) →
+                                    </a>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 )}
@@ -145,7 +201,62 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                     <CardHeader>
                         <div className="flex justify-between items-start">
                             <div className="flex-1">
-                                <CardTitle className="text-3xl font-bold mb-2">{project.title}</CardTitle>
+                                {/* Editable Title */}
+                                {isEditingTitle ? (
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Input
+                                            value={editedTitle}
+                                            onChange={(e) => setEditedTitle(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    updateProjectTitle()
+                                                } else if (e.key === 'Escape') {
+                                                    setIsEditingTitle(false)
+                                                    setEditedTitle(project.title)
+                                                }
+                                            }}
+                                            className="text-3xl font-bold h-auto py-2"
+                                            autoFocus
+                                        />
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={updateProjectTitle}
+                                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                        >
+                                            <Check className="w-5 h-5" />
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => {
+                                                setIsEditingTitle(false)
+                                                setEditedTitle(project.title)
+                                            }}
+                                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                            <X className="w-5 h-5" />
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <CardTitle className="text-3xl font-bold">{project.title}</CardTitle>
+                                        {role === 'admin' && !project.completed_at && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => {
+                                                    setIsEditingTitle(true)
+                                                    setEditedTitle(project.title)
+                                                }}
+                                                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                                            >
+                                                <Pencil className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+
                                 {project.description && (
                                     <p className="text-slate-600 mb-4">{project.description}</p>
                                 )}
@@ -226,7 +337,12 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                                                         disabled={!!project.completed_at}
                                                         value={task.status || 'Sin empezar'}
                                                         onValueChange={async (newStatus) => {
-                                                            // Optimistic update
+                                                            if (newStatus === 'Terminada') {
+                                                                setActiveTaskForCompletion(task)
+                                                                return
+                                                            }
+
+                                                            // Optimistic update for non-terminal statuses
                                                             const previousTasks = [...tasks]
                                                             setTasks(tasks.map(t =>
                                                                 t.id === task.id ? { ...t, status: newStatus } : t
@@ -309,6 +425,33 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                         onClose={() => {
                             setShowCompletionModal(false)
                             fetchProjectData()
+                        }}
+                    />
+                )}
+
+                {/* Task Completion Modal (Comments) */}
+                {activeTaskForCompletion && (
+                    <TaskCompletionModal
+                        taskTitle={activeTaskForCompletion.title}
+                        existingNotes={activeTaskForCompletion.notes}
+                        isOpen={true}
+                        onClose={() => setActiveTaskForCompletion(null)}
+                        onConfirm={async (notes) => {
+                            try {
+                                const { error } = await supabase
+                                    .from('tasks')
+                                    .update({
+                                        status: 'Terminada',
+                                        notes: notes || null
+                                    })
+                                    .eq('id', activeTaskForCompletion.id)
+
+                                if (error) throw error
+                                fetchProjectData()
+                            } catch (error) {
+                                console.error('Error finalizando tarea:', error)
+                                alert('Error al finalizar la tarea')
+                            }
                         }}
                     />
                 )}

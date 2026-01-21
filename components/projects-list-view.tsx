@@ -52,6 +52,51 @@ export function ProjectsListView() {
         }, 12000)
 
         Promise.all([fetchProjects(), fetchTasksAndProgress()]).finally(() => window.clearTimeout(t))
+
+        // Suscripción a cambios en tiempo real de la tabla projects
+        const projectsChannel = supabase
+            .channel('projects-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*', // Escucha INSERT, UPDATE y DELETE
+                    schema: 'public',
+                    table: 'projects'
+                },
+                (payload) => {
+                    console.log('Cambio detectado en projects:', payload)
+
+                    // Recargar proyectos y progreso cuando hay cambios
+                    fetchProjects()
+                    fetchTasksAndProgress()
+                }
+            )
+            .subscribe()
+
+        // Suscripción a cambios en tiempo real de la tabla tasks
+        const tasksChannel = supabase
+            .channel('tasks-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*', // Escucha INSERT, UPDATE y DELETE
+                    schema: 'public',
+                    table: 'tasks'
+                },
+                (payload) => {
+                    console.log('Cambio detectado en tasks:', payload)
+
+                    // Recargar progreso cuando hay cambios en tareas
+                    fetchTasksAndProgress()
+                }
+            )
+            .subscribe()
+
+        // Cleanup: cancelar suscripción cuando el componente se desmonta
+        return () => {
+            supabase.removeChannel(projectsChannel)
+            supabase.removeChannel(tasksChannel)
+        }
     }, [authLoading, user?.id])
 
     const fetchProjects = useCallback(async () => {
@@ -407,6 +452,22 @@ export function ProjectsListView() {
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {/* Finalized Project Link */}
+                                            {project.completed_at && project.upload_link && (
+                                                <div className="mt-3 pt-3 border-t border-slate-200">
+                                                    <a
+                                                        href={project.upload_link}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-xs text-blue-600 hover:text-blue-800 font-bold underline flex items-center gap-1"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <CheckCircle2 className="w-3 h-3" />
+                                                        Ver material finalizado →
+                                                    </a>
+                                                </div>
+                                            )}
 
                                             {/* Action Buttons */}
                                             {(projectProgress[project.id] || 0) === 100 && !project.completed_at && role === 'admin' && (
