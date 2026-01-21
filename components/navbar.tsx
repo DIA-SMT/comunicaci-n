@@ -28,7 +28,7 @@ export function Navbar() {
             <div className="navbar-container flex items-center justify-between w-full">
                 <div className="navbar-logo">
                     <Image
-                        src="/Logo_SMT_neg_4.png"
+                        src="/Logo_SMT_blanco.png"
                         alt="Logo Municipalidad de San Miguel de Tucumán"
                         width={200}
                         height={200}
