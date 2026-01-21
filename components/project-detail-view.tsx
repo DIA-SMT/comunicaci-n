@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/context/AuthContext'
 import { Project, Task, TaskAssignee } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,7 +13,8 @@ import { TaskForm } from '@/components/task-form'
 import { TaskEditForm } from '@/components/task-edit-form'
 import { ProjectCompletionModal } from '@/components/project-completion-modal'
 import { TaskCompletionModal } from '@/components/task-completion-modal'
-import { ArrowLeft, Calendar, CheckCircle2, Circle, Clock } from 'lucide-react'
+import { ArrowLeft, Calendar, CheckCircle2, Circle, Clock, Pencil, Check, X } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 
 type TaskWithAssignees = Task & {
     assignees: TaskAssignee[]
@@ -20,11 +22,14 @@ type TaskWithAssignees = Task & {
 
 export function ProjectDetailView({ projectId }: { projectId: string }) {
     const router = useRouter()
+    const { role } = useAuth()
     const [project, setProject] = useState<Project | null>(null)
     const [tasks, setTasks] = useState<TaskWithAssignees[]>([])
     const [loading, setLoading] = useState(true)
     const [showCompletionModal, setShowCompletionModal] = useState(false)
     const [activeTaskForCompletion, setActiveTaskForCompletion] = useState<TaskWithAssignees | null>(null)
+    const [isEditingTitle, setIsEditingTitle] = useState(false)
+    const [editedTitle, setEditedTitle] = useState('')
 
     const fetchProjectData = useCallback(async () => {
         try {
@@ -89,6 +94,42 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                 return <Clock className="w-5 h-5 text-blue-600" />
             default:
                 return <Circle className="w-5 h-5 text-slate-400" />
+        }
+    }
+
+    const updateProjectTitle = async () => {
+        if (!editedTitle.trim()) {
+            alert('El título no puede estar vacío')
+            return
+        }
+
+        if (editedTitle === project?.title) {
+            setIsEditingTitle(false)
+            return
+        }
+
+        const oldTitle = project?.title
+
+        // Optimistic update
+        if (project) {
+            setProject({ ...project, title: editedTitle })
+        }
+        setIsEditingTitle(false)
+
+        try {
+            const { error } = await supabase
+                .from('projects')
+                .update({ title: editedTitle })
+                .eq('id', projectId)
+
+            if (error) throw error
+        } catch (error) {
+            console.error('Error updating project title:', error)
+            alert('No se pudo actualizar el título del proyecto')
+            // Rollback
+            if (project && oldTitle) {
+                setProject({ ...project, title: oldTitle })
+            }
         }
     }
 
@@ -160,7 +201,62 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                     <CardHeader>
                         <div className="flex justify-between items-start">
                             <div className="flex-1">
-                                <CardTitle className="text-3xl font-bold mb-2">{project.title}</CardTitle>
+                                {/* Editable Title */}
+                                {isEditingTitle ? (
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Input
+                                            value={editedTitle}
+                                            onChange={(e) => setEditedTitle(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    updateProjectTitle()
+                                                } else if (e.key === 'Escape') {
+                                                    setIsEditingTitle(false)
+                                                    setEditedTitle(project.title)
+                                                }
+                                            }}
+                                            className="text-3xl font-bold h-auto py-2"
+                                            autoFocus
+                                        />
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={updateProjectTitle}
+                                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                        >
+                                            <Check className="w-5 h-5" />
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => {
+                                                setIsEditingTitle(false)
+                                                setEditedTitle(project.title)
+                                            }}
+                                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                            <X className="w-5 h-5" />
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <CardTitle className="text-3xl font-bold">{project.title}</CardTitle>
+                                        {role === 'admin' && !project.completed_at && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => {
+                                                    setIsEditingTitle(true)
+                                                    setEditedTitle(project.title)
+                                                }}
+                                                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                                            >
+                                                <Pencil className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+
                                 {project.description && (
                                     <p className="text-slate-600 mb-4">{project.description}</p>
                                 )}

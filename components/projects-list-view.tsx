@@ -52,6 +52,51 @@ export function ProjectsListView() {
         }, 12000)
 
         Promise.all([fetchProjects(), fetchTasksAndProgress()]).finally(() => window.clearTimeout(t))
+
+        // Suscripción a cambios en tiempo real de la tabla projects
+        const projectsChannel = supabase
+            .channel('projects-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*', // Escucha INSERT, UPDATE y DELETE
+                    schema: 'public',
+                    table: 'projects'
+                },
+                (payload) => {
+                    console.log('Cambio detectado en projects:', payload)
+
+                    // Recargar proyectos y progreso cuando hay cambios
+                    fetchProjects()
+                    fetchTasksAndProgress()
+                }
+            )
+            .subscribe()
+
+        // Suscripción a cambios en tiempo real de la tabla tasks
+        const tasksChannel = supabase
+            .channel('tasks-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*', // Escucha INSERT, UPDATE y DELETE
+                    schema: 'public',
+                    table: 'tasks'
+                },
+                (payload) => {
+                    console.log('Cambio detectado en tasks:', payload)
+
+                    // Recargar progreso cuando hay cambios en tareas
+                    fetchTasksAndProgress()
+                }
+            )
+            .subscribe()
+
+        // Cleanup: cancelar suscripción cuando el componente se desmonta
+        return () => {
+            supabase.removeChannel(projectsChannel)
+            supabase.removeChannel(tasksChannel)
+        }
     }, [authLoading, user?.id])
 
     const fetchProjects = useCallback(async () => {
