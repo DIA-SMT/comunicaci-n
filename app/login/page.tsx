@@ -79,8 +79,8 @@ export default function LoginPage() {
                             />
                         </div>
                     </CardContent>
-                    <CardFooter>
-                        <Button className="w-full bg-[#1f89f6] hover:bg-[#1877d2] mt-4" type="submit" disabled={loading}>
+                    <CardFooter className="flex flex-col gap-2">
+                        <Button className="w-full bg-[#1f89f6] hover:bg-[#1877d2]" type="submit" disabled={loading}>
                             {loading ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -90,6 +90,11 @@ export default function LoginPage() {
                                 'Ingresar'
                             )}
                         </Button>
+                        <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+                            <a href="/forgot-password" className="text-[#1f89f6] hover:underline">
+                                ¿Olvidaste tu contraseña?
+                            </a>
+                        </div>
                     </CardFooter>
                 </form>
             </Card>
