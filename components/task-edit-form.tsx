@@ -63,7 +63,13 @@ export function TaskEditForm({
 
             setSelectedMembers(currentMembers)
         }
-    }, [])
+    }, [task.assignees]) // Added task.assignees dependency for safety, though empty dependency array was in original useCallback
+
+    useEffect(() => {
+        if (open) {
+            fetchMembers()
+        }
+    }, [open, fetchMembers])
 
     function addMember(member: Member) {
         if (!selectedMembers.find(m => m.id === member.id)) {
