@@ -233,6 +233,14 @@ export function ProjectsListView() {
 
             if (error) throw error
 
+            // Cascading delete for tasks
+            const { error: tasksError } = await supabase
+                .from('tasks')
+                .update({ habilita: 0 })
+                .eq('project_id', projectId)
+
+            if (tasksError) throw tasksError
+
             fetchProjects()
         } catch (error) {
             console.error('Error deleting project:', error)
