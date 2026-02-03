@@ -51,9 +51,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         .from('profiles')
                         .select('role')
                         .eq('id', currentSession.user.id)
+                        .eq('habilita', 1)
                         .maybeSingle()
 
-                    setRole((profile?.role as 'admin' | 'common') || 'common')
+                    if (!profile) {
+                        // Si no hay perfil habilitado, forzar logout
+                        console.warn('Usuario deshabilitado o sin perfil. Cerrando sesión.')
+                        await supabase.auth.signOut()
+                        setSession(null)
+                        setUser(null)
+                        setRole(null)
+                        lastUserId.current = null
+                    } else {
+                        setRole((profile.role as 'admin' | 'common') || 'common')
+                    }
                 } else {
                     setRole(null)
                     lastUserId.current = null
@@ -132,9 +143,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             .from('profiles')
                             .select('role')
                             .eq('id', newSession.user.id)
+                            .eq('habilita', 1)
                             .maybeSingle()
 
-                        setRole(profile?.role as 'admin' | 'common' || 'common')
+                        if (!profile) {
+                            console.warn('Usuario deshabilitado o sin perfil en cambio de estado. Cerrando sesión.')
+                            await supabase.auth.signOut()
+                            setSession(null)
+                            setUser(null)
+                            setRole(null)
+                            lastUserId.current = null
+                        } else {
+                            setRole((profile.role as 'admin' | 'common') || 'common')
+                        }
                     } else {
                         lastUserId.current = null
                         setRole(null)

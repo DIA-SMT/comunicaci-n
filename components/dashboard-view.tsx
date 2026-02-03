@@ -33,12 +33,14 @@ export function DashboardView() {
                 .from('projects')
                 .select('*')
                 .neq('status', 'Archivado')
+                .eq('habilita', 1)
                 .order('deadline', { ascending: true })
 
             const { data: tasksData } = await supabase
                 .from('tasks')
                 .select('*, task_assignees(assignee_name)')
-                .not('status', 'in', '("Listo","Terminada")') // Exclude both old and new completed statuses
+                .not('status', 'in', '("Listo","Terminada")')
+                .eq('habilita', 1) // Exclude both old and new completed statuses
 
             if (projectsData) setProjects(projectsData)
             if (tasksData) setTasks(tasksData as unknown as LocalTask[])
@@ -135,7 +137,7 @@ export function DashboardView() {
                                         {assigneeTasks.map(task => (
                                             <div key={task.id} className="flex items-start gap-2 text-sm border-b last:border-0 pb-2 last:pb-0">
                                                 <div className={`w-2 h-2 mt-1.5 rounded-full ${['Listo', 'Terminada'].includes(task.status || '') ? 'bg-green-500' :
-                                                        ['En Progreso', 'En desarrollo'].includes(task.status || '') ? 'bg-blue-500' : 'bg-slate-300'
+                                                    ['En Progreso', 'En desarrollo'].includes(task.status || '') ? 'bg-blue-500' : 'bg-slate-300'
                                                     }`} />
                                                 <div className="flex-1">
                                                     <p className="font-medium leading-tight">{task.title}</p>

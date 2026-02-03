@@ -46,6 +46,7 @@ export function AssignmentsView() {
                         projects (*)
                     )
                 `)
+                .eq('habilita', 1)
 
             if (error) throw error
             if (!taskAssignees) return
@@ -58,7 +59,7 @@ export function AssignmentsView() {
                 // Assuming One-to-One from assignee row to task row based on FK
                 const taskData = assignee.tasks as any
 
-                if (!taskData) continue
+                if (!taskData || taskData.habilita !== 1) continue
 
                 // Check if project exists in the nested data
                 // It might be 'projects' (plural) or singular depending on the exact relation name

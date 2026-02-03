@@ -22,16 +22,19 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Pencil, Plus } from 'lucide-react'
+import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 
 export default function MembersPage() {
     const router = useRouter()
+    const { role } = useAuth()
     const [members, setMembers] = useState<Member[]>([])
     const [loading, setLoading] = useState(true)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [editingMember, setEditingMember] = useState<Member | null>(null)
     const [formData, setFormData] = useState({ full_name: '', email: '', password: '' })
     const [saveLoading, setSaveLoading] = useState(false)
+    const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
 
     useEffect(() => {
         fetchMembers()
@@ -42,6 +45,7 @@ export default function MembersPage() {
             const { data, error } = await supabase
                 .from('members')
                 .select('*')
+                .eq('habilita', 1)
                 .order('full_name')
 
             if (error) throw error
@@ -94,6 +98,27 @@ export default function MembersPage() {
             alert(error.message || 'Error al guardar el miembro')
         } finally {
             setSaveLoading(false)
+        }
+    }
+
+    async function handleDelete(member: Member) {
+        if (!confirm('¿Estás seguro de que quieres eliminar a este miembro?')) return
+
+        setDeleteLoading(member.id)
+        try {
+            const { error } = await supabase
+                .from('members')
+                .update({ habilita: 0 })
+                .eq('id', member.id)
+
+            if (error) throw error
+
+            fetchMembers()
+        } catch (error: any) {
+            console.error('Error deleting member:', error)
+            alert(error.message || 'Error al eliminar el miembro')
+        } finally {
+            setDeleteLoading(null)
         }
     }
 
@@ -205,7 +230,17 @@ export default function MembersPage() {
                                         >
                                             <Pencil className="w-4 h-4" />
                                         </Button>
-
+                                        {role === 'admin' && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="text-destructive hover:text-destructive/90"
+                                                disabled={deleteLoading === member.id}
+                                                onClick={() => handleDelete(member)}
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        )}
                                     </div>
                                 </TableCell>
                             </TableRow>

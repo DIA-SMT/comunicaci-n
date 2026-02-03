@@ -188,7 +188,7 @@ export function TaskEditForm({
         try {
             const { error } = await supabase
                 .from('tasks')
-                .delete()
+                .update({ habilita: 0 })
                 .eq('id', task.id)
 
             if (error) throw error

@@ -13,7 +13,7 @@ import { TaskForm } from '@/components/task-form'
 import { TaskEditForm } from '@/components/task-edit-form'
 import { ProjectCompletionModal } from '@/components/project-completion-modal'
 import { TaskCompletionModal } from '@/components/task-completion-modal'
-import { ArrowLeft, Calendar, CheckCircle2, Circle, Clock, Pencil, Check, X } from 'lucide-react'
+import { ArrowLeft, Calendar, CheckCircle2, Circle, Clock, Pencil, Check, X, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 
 type TaskWithAssignees = Task & {
@@ -38,6 +38,7 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                 .from('projects')
                 .select('*')
                 .eq('id', projectId)
+                .eq('habilita', 1)
                 .single()
 
             if (projectData) setProject(projectData)
@@ -47,6 +48,7 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                 .from('tasks')
                 .select('*, task_assignees(id, assignee_name)') // Select specific fields from task_assignees
                 .eq('project_id', projectId)
+                .eq('habilita', 1)
                 .order('created_at', { ascending: true })
 
             if (tasksData) {
@@ -141,6 +143,24 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                 return 'bg-blue-100 text-blue-800'
             default:
                 return 'bg-slate-100 text-slate-600'
+        }
+    }
+
+    const handleDeleteProject = async () => {
+        if (!confirm('¿Estás seguro de que quieres eliminar este proyecto?')) return
+
+        try {
+            const { error } = await supabase
+                .from('projects')
+                .update({ habilita: 0 })
+                .eq('id', projectId)
+
+            if (error) throw error
+
+            router.replace('/')
+        } catch (error) {
+            console.error('Error deleting project:', error)
+            alert('Error al eliminar el proyecto')
         }
     }
 
@@ -252,6 +272,16 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                                                 className="text-slate-400 hover:text-slate-600 hover:bg-slate-100"
                                             >
                                                 <Pencil className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                        {role === 'admin' && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={handleDeleteProject}
+                                                className="text-slate-400 hover:text-red-600 hover:bg-red-50"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
                                             </Button>
                                         )}
                                     </div>

@@ -142,6 +142,7 @@ export async function POST(req: Request) {
                     .from('task_assignees')
                     .select('task_id')
                     .eq('member_id', myMember.id)
+                    .eq('habilita', 1)
 
                 if (assigneesError) throw new Error(assigneesError.message)
 
@@ -153,6 +154,7 @@ export async function POST(req: Request) {
                     .from('tasks')
                     .select('*, projects(title), task_assignees(id, assignee_name, member_id)')
                     .in('id', taskIds)
+                    .eq('habilita', 1)
 
                 if (status) {
                     const normalized = String(status).toLowerCase().trim()
@@ -195,6 +197,7 @@ export async function POST(req: Request) {
                 const { data, error } = await supabase
                     .from('members')
                     .select('*')
+                    .eq('habilita', 1)
                     .order('full_name', { ascending: true })
 
                 if (error) throw new Error(error.message)
@@ -215,6 +218,7 @@ export async function POST(req: Request) {
                 const { data, error } = await supabase
                     .from('projects')
                     .select('*')
+                    .eq('habilita', 1)
                     .order('created_at', { ascending: false });
 
                 if (error) throw new Error(error.message);
@@ -239,7 +243,8 @@ export async function POST(req: Request) {
             execute: async ({ project_id, status, member_id, assignee_name, assigned_to_me }: any) => {
                 let query = supabase
                     .from('tasks')
-                    .select('*, projects(title), task_assignees(id, assignee_name, member_id)');
+                    .select('*, projects(title), task_assignees(id, assignee_name, member_id)')
+                    .eq('habilita', 1);
 
                 if (project_id) {
                     query = query.eq('project_id', project_id);

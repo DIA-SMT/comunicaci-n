@@ -35,6 +35,7 @@ export async function GET() {
     .from('profiles')
     .select('role')
     .eq('id', data.user.id)
+    .eq('habilita', 1)
     .maybeSingle()
 
   return Response.json(

@@ -12,7 +12,7 @@ import { ProjectForm } from '@/components/project-form'
 import { Input } from '@/components/ui/input'
 import { ProjectSummary } from '@/components/project-summary'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Calendar, FolderKanban, Users, Search, ArrowLeft, CheckCircle2, LayoutGrid, List } from 'lucide-react'
+import { Calendar, FolderKanban, Users, Search, ArrowLeft, CheckCircle2, LayoutGrid, List, Trash2 } from 'lucide-react'
 import { ProjectProgressChart } from '@/components/project-progress-chart'
 import { ProjectCompletionModal } from '@/components/project-completion-modal'
 
@@ -34,6 +34,7 @@ export function ProjectsListView() {
     const [chartData, setChartData] = useState<ProjectProgress[]>([])
     const [activeCompletionProjectId, setActiveCompletionProjectId] = useState<string | null>(null)
     const [projectProgress, setProjectProgress] = useState<Record<string, number>>({})
+    const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
     const { role, user, loading: authLoading } = useAuth()
 
     useEffect(() => {
@@ -105,6 +106,7 @@ export function ProjectsListView() {
             const query = supabase
                 .from('projects')
                 .select('*')
+                .eq('habilita', 1)
                 .order('deadline', { ascending: true })
 
             const { data } = await query
@@ -124,6 +126,7 @@ export function ProjectsListView() {
             const { data: allTasks } = await supabase
                 .from('tasks')
                 .select('*, projects(*)')
+                .eq('habilita', 1)
 
             const progressMap = new Map<string, ProjectProgress>()
             const progressState: Record<string, number> = {}
@@ -214,6 +217,28 @@ export function ProjectsListView() {
             console.error('Error updating priority:', error)
             setProjects(oldProjects) // Revert
             // Could add a toast here
+        }
+    }
+
+    const handleDeleteProject = async (e: React.MouseEvent, projectId: string) => {
+        e.stopPropagation()
+        if (!confirm('¿Estás seguro de que quieres eliminar este proyecto?')) return
+
+        setDeleteLoading(projectId)
+        try {
+            const { error } = await supabase
+                .from('projects')
+                .update({ habilita: 0 })
+                .eq('id', projectId)
+
+            if (error) throw error
+
+            fetchProjects()
+        } catch (error) {
+            console.error('Error deleting project:', error)
+            alert('Error al eliminar el proyecto')
+        } finally {
+            setDeleteLoading(null)
         }
     }
 
@@ -383,7 +408,7 @@ export function ProjectsListView() {
                                                     {project.title}
                                                 </CardTitle>
                                                 {role === 'admin' ? (
-                                                    <div onClick={(e) => e.stopPropagation()}>
+                                                    <div onClick={(e) => e.stopPropagation()} className="flex gap-1 items-center">
                                                         <Select
                                                             value={project.priority || 'Media'}
                                                             onValueChange={(value) => updateProjectPriority(project.id, value)}
@@ -402,6 +427,15 @@ export function ProjectsListView() {
                                                                 <SelectItem value="Urgente">Urgente</SelectItem>
                                                             </SelectContent>
                                                         </Select>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50"
+                                                            disabled={deleteLoading === project.id}
+                                                            onClick={(e) => handleDeleteProject(e, project.id)}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
                                                     </div>
                                                 ) : (
                                                     <Badge
@@ -539,7 +573,7 @@ export function ProjectsListView() {
 
                                             {/* Priority Selector (Admin) or Badge */}
                                             {role === 'admin' ? (
-                                                <div onClick={(e) => e.stopPropagation()}>
+                                                <div onClick={(e) => e.stopPropagation()} className="flex gap-2 items-center">
                                                     <Select
                                                         value={project.priority || 'Media'}
                                                         onValueChange={(value) => updateProjectPriority(project.id, value)}
@@ -558,6 +592,15 @@ export function ProjectsListView() {
                                                             <SelectItem value="Urgente">Urgente</SelectItem>
                                                         </SelectContent>
                                                     </Select>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50"
+                                                        disabled={deleteLoading === project.id}
+                                                        onClick={(e) => handleDeleteProject(e, project.id)}
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
                                                 </div>
                                             ) : (
                                                 <Badge

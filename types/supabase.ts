@@ -16,6 +16,7 @@ export type Database = {
                     full_name: string | null
                     role: string | null
                     avatar_url: string | null
+                    habilita: number
                 }
                 Insert: {
                     id: string
@@ -23,6 +24,7 @@ export type Database = {
                     full_name?: string | null
                     role?: string | null
                     avatar_url?: string | null
+                    habilita?: number
                 }
                 Update: {
                     id?: string
@@ -30,6 +32,7 @@ export type Database = {
                     full_name?: string | null
                     role?: string | null
                     avatar_url?: string | null
+                    habilita?: number
                 }
                 Relationships: []
             }
@@ -47,6 +50,7 @@ export type Database = {
                     title: string
                     type: string | null
                     upload_link: string | null
+                    habilita: number
                 }
                 Insert: {
                     area?: string | null
@@ -61,6 +65,7 @@ export type Database = {
                     title: string
                     type?: string | null
                     upload_link?: string | null
+                    habilita?: number
                 }
                 Update: {
                     area?: string | null
@@ -75,6 +80,7 @@ export type Database = {
                     title?: string
                     type?: string | null
                     upload_link?: string | null
+                    habilita?: number
                 }
                 Relationships: []
             }
@@ -92,6 +98,7 @@ export type Database = {
                     created_at?: string | null
                     id?: string
                     task_id: string
+                    habilita?: number
                 }
                 Update: {
                     assignee_name?: string
@@ -99,6 +106,7 @@ export type Database = {
                     created_at?: string | null
                     id?: string
                     task_id?: string
+                    habilita?: number
                 }
                 Relationships: [
                     {
@@ -123,18 +131,21 @@ export type Database = {
                     email: string | null
                     full_name: string
                     id: string
+                    habilita: number
                 }
                 Insert: {
                     created_at?: string | null
                     email?: string | null
                     full_name: string
                     id?: string
+                    habilita?: number
                 }
                 Update: {
                     created_at?: string | null
                     email?: string | null
                     full_name?: string
                     id?: string
+                    habilita?: number
                 }
                 Relationships: []
             }
@@ -147,6 +158,7 @@ export type Database = {
                     project_id: string | null
                     status: string | null
                     title: string
+                    habilita: number
                 }
                 Insert: {
                     created_at?: string | null
@@ -156,6 +168,7 @@ export type Database = {
                     project_id?: string | null
                     status?: string | null
                     title: string
+                    habilita?: number
                 }
                 Update: {
                     created_at?: string | null
@@ -165,6 +178,7 @@ export type Database = {
                     project_id?: string | null
                     status?: string | null
                     title?: string
+                    habilita?: number
                 }
                 Relationships: [
                     {
