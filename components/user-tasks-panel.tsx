@@ -41,6 +41,7 @@ export function UserTasksPanel({ isOpen, onClose }: UserTasksPanelProps) {
                     )
                 `)
                 .neq('status', 'Terminada') // Only show pending/in-progress tasks
+                .eq('habilita', 1)
                 .order('created_at', { ascending: false })
 
             if (role !== 'admin') {

@@ -80,6 +80,10 @@ export function TaskEditForm({
     }
 
     function removeMember(memberId: string) {
+        if (selectedMembers.length <= 1) {
+            alert('La tarea debe tener al menos un responsable')
+            return
+        }
         setSelectedMembers(selectedMembers.filter(m => m.id !== memberId))
     }
 
@@ -288,10 +292,16 @@ export function TaskEditForm({
                                     {selectedMembers.map((member) => (
                                         <Badge key={member.id} variant="secondary" className="gap-1">
                                             {member.full_name}
-                                            <X
-                                                className="w-3 h-3 cursor-pointer"
-                                                onClick={() => removeMember(member.id)}
-                                            />
+                                            <button
+                                                type="button"
+                                                className="ml-1 hover:bg-slate-200 rounded-full p-0.5 transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400"
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    removeMember(member.id)
+                                                }}
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
                                         </Badge>
                                     ))}
                                 </div>
