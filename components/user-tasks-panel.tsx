@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
 import { Task } from '@/types'
@@ -179,11 +179,11 @@ export function UserTasksPanel({ isOpen, onClose }: UserTasksPanelProps) {
                                     key={task.id}
                                     className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 hover:shadow-md transition-shadow group"
                                 >
-                                    <div className="flex justify-between items-start mb-2">
-                                        <Badge variant="outline" className="mb-2 bg-slate-50">
+                                    <div className="flex justify-between items-start mb-2 gap-2">
+                                        <MarqueeBadge className="mb-2 max-w-[70%]" title={task.projects?.title}>
                                             {task.projects?.title || 'Sin proyecto'}
-                                        </Badge>
-                                        <Badge className={`${task.status === 'En desarrollo' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'
+                                        </MarqueeBadge>
+                                        <Badge className={`shrink-0 ${task.status === 'En desarrollo' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'
                                             }`}>
                                             {task.status}
                                         </Badge>
@@ -238,5 +238,72 @@ export function UserTasksPanel({ isOpen, onClose }: UserTasksPanelProps) {
                 />
             )}
         </>
+    )
+}
+
+function MarqueeBadge({ children, title, className, ...props }: { children: React.ReactNode, title?: string, className?: string }) {
+    const containerRef = useRef<HTMLDivElement>(null)
+    const textRef = useRef<HTMLSpanElement>(null)
+    const [isOverflowing, setIsOverflowing] = useState(false)
+    const [offset, setOffset] = useState(0)
+
+    useEffect(() => {
+        const checkOverflow = () => {
+            if (containerRef.current && textRef.current) {
+                const containerWidth = containerRef.current.clientWidth // Use clientWidth for accurate inner width
+                const textWidth = textRef.current.scrollWidth
+
+                if (textWidth > containerWidth) {
+                    setIsOverflowing(true)
+                    setOffset(containerWidth - textWidth) // Negative offset for translate
+                } else {
+                    setIsOverflowing(false)
+                    setOffset(0)
+                }
+            }
+        }
+
+        // Check immediately
+        checkOverflow()
+
+        // Check after a short delay to allow for layout/font stabilization on mobile
+        const timer = setTimeout(checkOverflow, 100)
+
+        // Use ResizeObserver for robust size change detection
+        const resizeObserver = new ResizeObserver(() => checkOverflow())
+
+        if (containerRef.current) {
+            resizeObserver.observe(containerRef.current)
+        }
+
+        // Fallback/Supplement with window resize
+        window.addEventListener('resize', checkOverflow)
+
+        return () => {
+            clearTimeout(timer)
+            resizeObserver.disconnect()
+            window.removeEventListener('resize', checkOverflow)
+        }
+    }, [children, title])
+
+    return (
+        <Badge
+            variant="outline"
+            className={`min-w-0 bg-slate-50 block overflow-hidden ${className}`}
+            title={title}
+            ref={containerRef}
+            {...props}
+        >
+            <span
+                ref={textRef}
+                className={isOverflowing ? "animate-marquee-scroll" : "truncate block"}
+                style={isOverflowing ? {
+                    '--marquee-end': `${offset}px`,
+                    '--marquee-duration': `${Math.abs(offset) * 0.05 + 2}s` // Dynamic duration based on length
+                } as React.CSSProperties : undefined}
+            >
+                {children}
+            </span>
+        </Badge>
     )
 }

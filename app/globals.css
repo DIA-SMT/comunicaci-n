@@ -112,6 +112,26 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+@keyframes marquee-scroll {
+
+  0%,
+  20% {
+    transform: translateX(0);
+  }
+
+  80%,
+  100% {
+    transform: translateX(var(--marquee-end));
+  }
+}
+
+.animate-marquee-scroll {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee-scroll linear infinite alternate;
+  animation-duration: var(--marquee-duration, 5s);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
