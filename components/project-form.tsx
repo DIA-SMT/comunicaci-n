@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
@@ -10,10 +10,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { Loader2 } from 'lucide-react'
 
 export function ProjectForm({ onProjectCreated }: { onProjectCreated: () => void }) {
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
+    const isSubmittingRef = useRef(false)
     const router = useRouter()
     const [formData, setFormData] = useState({
         title: '',
@@ -49,6 +51,9 @@ export function ProjectForm({ onProjectCreated }: { onProjectCreated: () => void
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
 
+        // Guard against double submission
+        if (isSubmittingRef.current) return
+
         // Manual validation
         const { title, description, area, type, priority, deadline } = formData
         if (!title || !description || !area || !type || !priority || !deadline) {
@@ -56,6 +61,7 @@ export function ProjectForm({ onProjectCreated }: { onProjectCreated: () => void
             return
         }
 
+        isSubmittingRef.current = true
         setLoading(true)
         try {
             const { data, error } = await supabase.from('projects').insert([
@@ -80,6 +86,7 @@ export function ProjectForm({ onProjectCreated }: { onProjectCreated: () => void
             console.error('Error creating project:', error)
             alert(`Error creating project: ${(error as any).message || 'Unknown error'}`)
         } finally {
+            isSubmittingRef.current = false
             setLoading(false)
         }
     }
@@ -192,6 +199,7 @@ export function ProjectForm({ onProjectCreated }: { onProjectCreated: () => void
                         </div>
                     </div>
                     <Button type="submit" disabled={loading}>
+                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {loading ? 'Guardando...' : 'Crear Proyecto'}
                     </Button>
                 </form>
