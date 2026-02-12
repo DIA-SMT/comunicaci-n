@@ -12,9 +12,10 @@ import { ProjectForm } from '@/components/project-form'
 import { Input } from '@/components/ui/input'
 import { ProjectSummary } from '@/components/project-summary'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Calendar, FolderKanban, Users, Search, ArrowLeft, CheckCircle2, LayoutGrid, List, Trash2 } from 'lucide-react'
+import { Calendar, FolderKanban, Users, Search, ArrowLeft, CheckCircle2, LayoutGrid, List, Trash2, StickyNote } from 'lucide-react'
 import { ProjectProgressChart } from '@/components/project-progress-chart'
 import { ProjectCompletionModal } from '@/components/project-completion-modal'
+import { DailyNotesPanel } from '@/components/daily-notes-panel'
 
 type ProjectProgress = {
     name: string
@@ -35,6 +36,7 @@ export function ProjectsListView() {
     const [activeCompletionProjectId, setActiveCompletionProjectId] = useState<string | null>(null)
     const [projectProgress, setProjectProgress] = useState<Record<string, number>>({})
     const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
+    const [dailyNotesOpen, setDailyNotesOpen] = useState(false)
     const { role, user, loading: authLoading } = useAuth()
 
     useEffect(() => {
@@ -641,6 +643,21 @@ export function ProjectsListView() {
                         fetchProjects()
                     }}
                 />
+            )}
+
+            {/* Daily Notes Panel */}
+            <DailyNotesPanel open={dailyNotesOpen} onOpenChange={setDailyNotesOpen} />
+
+            {/* Floating Daily Notes Button */}
+            {!dailyNotesOpen && (
+                <Button
+                    onClick={() => setDailyNotesOpen(true)}
+                    size="icon"
+                    className="fixed bottom-4 left-4 z-50 h-12 w-12 rounded-full shadow-lg bg-amber-400 hover:bg-amber-500 text-amber-900 transition-transform hover:scale-110 border-2 border-white/20"
+                    title="Notas del Día"
+                >
+                    <StickyNote className="h-6 w-6" />
+                </Button>
             )}
         </div>
     )
