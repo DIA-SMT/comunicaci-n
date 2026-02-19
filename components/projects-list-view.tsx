@@ -448,10 +448,10 @@ export function ProjectsListView() {
                                 {sortedProjects.map((project) => (
                                     <Card
                                         key={project.id}
-                                        className={`hover:shadow-lg transition-all cursor-pointer hover:scale-105 ${project.priority === 'Urgente' ? 'bg-red-50 hover:bg-red-100' :
-                                            project.priority === 'Alta' ? 'bg-orange-50 hover:bg-orange-100' :
-                                                project.priority === 'Media' ? 'bg-yellow-50 hover:bg-yellow-100' :
-                                                    'bg-emerald-50 hover:bg-emerald-100'
+                                        className={`hover:shadow-xl transition-all cursor-pointer hover:scale-105 border-l-4 ${project.priority === 'Urgente' ? 'bg-red-100 hover:bg-red-200 border-l-red-500 dark:bg-red-950 dark:hover:bg-red-900 dark:border-l-red-400' :
+                                            project.priority === 'Alta' ? 'bg-orange-100 hover:bg-orange-200 border-l-orange-500 dark:bg-orange-950 dark:hover:bg-orange-900 dark:border-l-orange-400' :
+                                                project.priority === 'Media' ? 'bg-amber-100 hover:bg-amber-200 border-l-amber-500 dark:bg-amber-950 dark:hover:bg-amber-900 dark:border-l-amber-400' :
+                                                    'bg-emerald-100 hover:bg-emerald-200 border-l-emerald-500 dark:bg-emerald-950 dark:hover:bg-emerald-900 dark:border-l-emerald-400'
                                             }`}
                                         onClick={() => router.push(`/projects/${project.id}`)}
                                     >
@@ -466,10 +466,10 @@ export function ProjectsListView() {
                                                             value={project.priority || 'Media'}
                                                             onValueChange={(value) => updateProjectPriority(project.id, value)}
                                                         >
-                                                            <SelectTrigger className={`w-[110px] h-8 ml-2 ${project.priority === 'Urgente' ? 'bg-red-100 text-red-800 border-red-200' :
-                                                                project.priority === 'Alta' ? 'bg-orange-100 text-orange-800 border-orange-200' :
-                                                                    project.priority === 'Media' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
-                                                                        'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                                            <SelectTrigger className={`w-[110px] h-8 ml-2 font-semibold ${project.priority === 'Urgente' ? 'bg-red-200 text-red-900 border-red-400 dark:bg-red-700 dark:text-red-100 dark:border-red-500' :
+                                                                project.priority === 'Alta' ? 'bg-orange-200 text-orange-900 border-orange-400 dark:bg-orange-700 dark:text-orange-100 dark:border-orange-500' :
+                                                                    project.priority === 'Media' ? 'bg-amber-200 text-amber-900 border-amber-400 dark:bg-amber-700 dark:text-amber-100 dark:border-amber-500' :
+                                                                        'bg-emerald-200 text-emerald-900 border-emerald-400 dark:bg-emerald-700 dark:text-emerald-100 dark:border-emerald-500'
                                                                 }`}>
                                                                 <SelectValue />
                                                             </SelectTrigger>
@@ -492,8 +492,11 @@ export function ProjectsListView() {
                                                     </div>
                                                 ) : (
                                                     <Badge
-                                                        variant={project.priority === 'Urgente' ? 'destructive' : 'secondary'}
-                                                        className="ml-2 shrink-0"
+                                                        className={`ml-2 shrink-0 font-semibold border ${project.priority === 'Urgente' ? 'bg-red-200 text-red-900 border-red-400 dark:bg-red-700 dark:text-red-100 dark:border-red-500' :
+                                                                project.priority === 'Alta' ? 'bg-orange-200 text-orange-900 border-orange-400 dark:bg-orange-700 dark:text-orange-100 dark:border-orange-500' :
+                                                                    project.priority === 'Media' ? 'bg-amber-200 text-amber-900 border-amber-400 dark:bg-amber-700 dark:text-amber-100 dark:border-amber-500' :
+                                                                        'bg-emerald-200 text-emerald-900 border-emerald-400 dark:bg-emerald-700 dark:text-emerald-100 dark:border-emerald-500'
+                                                            }`}
                                                     >
                                                         {project.priority}
                                                     </Badge>
@@ -579,10 +582,10 @@ export function ProjectsListView() {
                                     <div
                                         key={project.id}
                                         onClick={() => router.push(`/projects/${project.id}`)}
-                                        className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 cursor-pointer transition-colors ${index !== filteredProjects.length - 1 ? 'border-b border-slate-100' : ''} ${project.priority === 'Urgente' ? 'hover:bg-red-50' :
-                                            project.priority === 'Alta' ? 'hover:bg-orange-50' :
-                                                project.priority === 'Media' ? 'hover:bg-yellow-50' :
-                                                    'hover:bg-emerald-50'
+                                        className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 cursor-pointer transition-colors border-l-4 ${index !== filteredProjects.length - 1 ? 'border-b border-slate-100' : ''} ${project.priority === 'Urgente' ? 'bg-red-50 hover:bg-red-100 border-l-red-500 dark:bg-red-950/60 dark:hover:bg-red-900/60 dark:border-l-red-400' :
+                                            project.priority === 'Alta' ? 'bg-orange-50 hover:bg-orange-100 border-l-orange-500 dark:bg-orange-950/60 dark:hover:bg-orange-900/60 dark:border-l-orange-400' :
+                                                project.priority === 'Media' ? 'bg-amber-50 hover:bg-amber-100 border-l-amber-500 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 dark:border-l-amber-400' :
+                                                    'bg-emerald-50 hover:bg-emerald-100 border-l-emerald-500 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 dark:border-l-emerald-400'
                                             }`}
                                     >
                                         <div className="flex-1 min-w-0 mr-4 mb-3 sm:mb-0">
@@ -631,10 +634,10 @@ export function ProjectsListView() {
                                                         value={project.priority || 'Media'}
                                                         onValueChange={(value) => updateProjectPriority(project.id, value)}
                                                     >
-                                                        <SelectTrigger className={`w-[100px] h-8 text-xs ${project.priority === 'Urgente' ? 'bg-red-100 text-red-800 border-red-200' :
-                                                            project.priority === 'Alta' ? 'bg-orange-100 text-orange-800 border-orange-200' :
-                                                                project.priority === 'Media' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
-                                                                    'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                                        <SelectTrigger className={`w-[100px] h-8 text-xs font-semibold ${project.priority === 'Urgente' ? 'bg-red-200 text-red-900 border-red-400 dark:bg-red-700 dark:text-red-100 dark:border-red-500' :
+                                                            project.priority === 'Alta' ? 'bg-orange-200 text-orange-900 border-orange-400 dark:bg-orange-700 dark:text-orange-100 dark:border-orange-500' :
+                                                                project.priority === 'Media' ? 'bg-amber-200 text-amber-900 border-amber-400 dark:bg-amber-700 dark:text-amber-100 dark:border-amber-500' :
+                                                                    'bg-emerald-200 text-emerald-900 border-emerald-400 dark:bg-emerald-700 dark:text-emerald-100 dark:border-emerald-500'
                                                             }`}>
                                                             <SelectValue />
                                                         </SelectTrigger>
@@ -657,8 +660,11 @@ export function ProjectsListView() {
                                                 </div>
                                             ) : (
                                                 <Badge
-                                                    variant={project.priority === 'Urgente' ? 'destructive' : 'secondary'}
-                                                    className="ml-2 shrink-0"
+                                                    className={`ml-2 shrink-0 font-semibold border ${project.priority === 'Urgente' ? 'bg-red-200 text-red-900 border-red-400 dark:bg-red-700 dark:text-red-100 dark:border-red-500' :
+                                                            project.priority === 'Alta' ? 'bg-orange-200 text-orange-900 border-orange-400 dark:bg-orange-700 dark:text-orange-100 dark:border-orange-500' :
+                                                                project.priority === 'Media' ? 'bg-amber-200 text-amber-900 border-amber-400 dark:bg-amber-700 dark:text-amber-100 dark:border-amber-500' :
+                                                                    'bg-emerald-200 text-emerald-900 border-emerald-400 dark:bg-emerald-700 dark:text-emerald-100 dark:border-emerald-500'
+                                                        }`}
                                                 >
                                                     {project.priority}
                                                 </Badge>
