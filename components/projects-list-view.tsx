@@ -12,7 +12,7 @@ import { ProjectForm } from '@/components/project-form'
 import { Input } from '@/components/ui/input'
 import { ProjectSummary } from '@/components/project-summary'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Calendar, FolderKanban, Users, Search, ArrowLeft, CheckCircle2, LayoutGrid, List, Trash2, StickyNote } from 'lucide-react'
+import { Calendar, FolderKanban, Users, Search, ArrowLeft, CheckCircle2, LayoutGrid, List, Trash2, StickyNote, ArrowUpDown, Flame, Clock3 } from 'lucide-react'
 import { ProjectProgressChart } from '@/components/project-progress-chart'
 import { ProjectCompletionModal } from '@/components/project-completion-modal'
 import { DailyNotesPanel } from '@/components/daily-notes-panel'
@@ -32,6 +32,7 @@ export function ProjectsListView() {
     const [filter, setFilter] = useState<'active' | 'urgent' | 'due_soon' | 'completed' | 'ready'>('active')
     const [searchQuery, setSearchQuery] = useState('')
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+    const [sortBy, setSortBy] = useState<'none' | 'priority' | 'deadline'>('none')
     const [chartData, setChartData] = useState<ProjectProgress[]>([])
     const [activeCompletionProjectId, setActiveCompletionProjectId] = useState<string | null>(null)
     const [projectProgress, setProjectProgress] = useState<Record<string, number>>({})
@@ -291,6 +292,21 @@ export function ProjectsListView() {
         return matchesSearch && matchesFilter
     })
 
+    const priorityOrder: Record<string, number> = { Urgente: 0, Alta: 1, Media: 2, Baja: 3 }
+
+    const sortedProjects = [...filteredProjects].sort((a, b) => {
+        if (sortBy === 'priority') {
+            return (priorityOrder[a.priority ?? 'Baja'] ?? 3) - (priorityOrder[b.priority ?? 'Baja'] ?? 3)
+        }
+        if (sortBy === 'deadline') {
+            if (!a.deadline && !b.deadline) return 0
+            if (!a.deadline) return 1
+            if (!b.deadline) return -1
+            return new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+        }
+        return 0
+    })
+
     if (authLoading) return <div className="p-8">Cargando sesión...</div>
     if (!user) return null
     if (loading) return <div className="p-8">Cargando proyectos...</div>
@@ -367,23 +383,62 @@ export function ProjectsListView() {
                             className="pl-10 bg-white"
                         />
                     </div>
-                    <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setViewMode('grid')}
-                            className={`h-8 w-8 p-0 hover:bg-white ${viewMode === 'grid' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
-                        >
-                            <LayoutGrid className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setViewMode('list')}
-                            className={`h-8 w-8 p-0 hover:bg-white ${viewMode === 'list' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
-                        >
-                            <List className="w-4 h-4" />
-                        </Button>
+                    <div className="flex items-center gap-2">
+                        {/* Sort controls */}
+                        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                            <button
+                                title="Sin orden"
+                                onClick={() => setSortBy('none')}
+                                className={`h-8 px-2.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all ${sortBy === 'none'
+                                        ? 'bg-white shadow-sm text-slate-900'
+                                        : 'text-slate-500 hover:bg-white/60'
+                                    }`}
+                            >
+                                <ArrowUpDown className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                                title="Ordenar por prioridad"
+                                onClick={() => setSortBy('priority')}
+                                className={`h-8 px-2.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all ${sortBy === 'priority'
+                                        ? 'bg-white shadow-sm text-slate-900'
+                                        : 'text-slate-500 hover:bg-white/60'
+                                    }`}
+                            >
+                                <Flame className="w-3.5 h-3.5" />
+                                <span>Prioridad</span>
+                            </button>
+                            <button
+                                title="Ordenar por fecha límite"
+                                onClick={() => setSortBy('deadline')}
+                                className={`h-8 px-2.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all ${sortBy === 'deadline'
+                                        ? 'bg-white shadow-sm text-slate-900'
+                                        : 'text-slate-500 hover:bg-white/60'
+                                    }`}
+                            >
+                                <Clock3 className="w-3.5 h-3.5" />
+                                <span>Fecha</span>
+                            </button>
+                        </div>
+
+                        {/* View mode toggle */}
+                        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setViewMode('grid')}
+                                className={`h-8 w-8 p-0 hover:bg-white ${viewMode === 'grid' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
+                            >
+                                <LayoutGrid className="w-4 h-4" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setViewMode('list')}
+                                className={`h-8 w-8 p-0 hover:bg-white ${viewMode === 'list' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
+                            >
+                                <List className="w-4 h-4" />
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
@@ -402,7 +457,7 @@ export function ProjectsListView() {
                     <>
                         {viewMode === 'grid' ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {filteredProjects.map((project) => (
+                                {sortedProjects.map((project) => (
                                     <Card
                                         key={project.id}
                                         className={`hover:shadow-lg transition-all cursor-pointer hover:scale-105 ${project.priority === 'Urgente' ? 'bg-red-50 hover:bg-red-100' :
@@ -532,7 +587,7 @@ export function ProjectsListView() {
                             </div>
                         ) : (
                             <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-                                {filteredProjects.map((project, index) => (
+                                {sortedProjects.map((project, index) => (
                                     <div
                                         key={project.id}
                                         onClick={() => router.push(`/projects/${project.id}`)}
