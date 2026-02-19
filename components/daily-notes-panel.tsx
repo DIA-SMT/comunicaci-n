@@ -35,14 +35,41 @@ export function DailyNotesPanel({ open, onOpenChange }: DailyNotesPanelProps) {
     const [saving, setSaving] = useState(false)
     const [loading, setLoading] = useState(false)
 
+    // Deshabilita automáticamente las notas de días anteriores
+    const disableOldNotes = useCallback(async () => {
+        try {
+            const todayStart = new Date()
+            todayStart.setHours(0, 0, 0, 0)
+
+            const { error } = await supabase
+                .from('daily_notes')
+                .update({ habilita: 0 })
+                .eq('habilita', 1)
+                .lt('created_at', todayStart.toISOString())
+
+            if (error) console.error('Error disabling old notes:', error)
+        } catch (error) {
+            console.error('Error disabling old notes:', error)
+        }
+    }, [])
+
     const fetchNotes = useCallback(async () => {
         setLoading(true)
         try {
-            const today = new Date().toISOString().split('T')[0]
+            // Primero deshabilitamos notas de días anteriores
+            await disableOldNotes()
+
+            // Rango del día de hoy (00:00:00 → 23:59:59)
+            const todayStart = new Date()
+            todayStart.setHours(0, 0, 0, 0)
+            const todayEnd = new Date()
+            todayEnd.setHours(23, 59, 59, 999)
+
             const { data, error } = await supabase
                 .from('daily_notes')
                 .select('*')
-                .eq('created_at', today)
+                .gte('created_at', todayStart.toISOString())
+                .lte('created_at', todayEnd.toISOString())
                 .eq('habilita', 1)
                 .order('created_at', { ascending: false })
 
@@ -53,7 +80,7 @@ export function DailyNotesPanel({ open, onOpenChange }: DailyNotesPanelProps) {
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [disableOldNotes])
 
     // Fetch notes when panel opens
     useEffect(() => {
@@ -206,7 +233,7 @@ export function DailyNotesPanel({ open, onOpenChange }: DailyNotesPanelProps) {
                                 <p className="text-xs mt-1">Escribí la primera nota del día</p>
                             </div>
                         ) : (
-                            notes.map((note) => (
+                            [...notes].sort((a, b) => Number(a.done) - Number(b.done)).map((note) => (
                                 <div
                                     key={note.id}
                                     className={`group relative rounded-lg border p-3 transition-all ${note.done
