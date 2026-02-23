@@ -6,19 +6,24 @@ export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url)
     const code = searchParams.get('code')
     const type = searchParams.get('type')
+    const errorParam = searchParams.get('error')
+    const errorDescription = searchParams.get('error_description')
 
-    // if "next" is in param, use it as the redirect URL
-    // Default to /reset-password if it's a recovery flow, otherwise /
-    let next = searchParams.get('next')
-    if (!next) {
-        next = type === 'recovery' ? '/reset-password' : '/'
+    // Log para diagnóstico
+    console.log('[auth/callback] params:', { code: !!code, type, errorParam, errorDescription })
+
+    // Si Supabase devolvió un error explícito
+    if (errorParam) {
+        console.error('[auth/callback] error de Supabase:', errorParam, errorDescription)
+        return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
     }
-
-    // Importante: Creamos la respuesta PRIMERO para poder setearle las cookies
-    const response = NextResponse.redirect(`${origin}${next}`)
 
     if (code) {
         const cookieStore = await cookies()
+
+        // Helper de cookies que escribe en la response
+        let cookiesToSetInResponse: Array<{ name: string; value: string; options: any }> = []
+
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -27,23 +32,41 @@ export async function GET(request: Request) {
                     getAll() {
                         return cookieStore.getAll()
                     },
-                    setAll(cookiesToSet) {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            response.cookies.set(name, value, options)
-                        )
+                    setAll(items) {
+                        cookiesToSetInResponse = items
                     },
                 },
             }
         )
 
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+        console.log('[auth/callback] exchangeCodeForSession:', {
+            userId: data?.user?.id,
+            error: error?.message,
+        })
 
         if (!error) {
+            // Determinar a dónde redirigir
+            let next = searchParams.get('next')
+            if (!next) {
+                next = type === 'recovery' ? '/reset-password' : '/'
+            }
+
+            const response = NextResponse.redirect(`${origin}${next}`)
+
+            // Setear las cookies de sesión en la respuesta
+            cookiesToSetInResponse.forEach(({ name, value, options }) => {
+                response.cookies.set(name, value, options)
+            })
+
             return response
+        } else {
+            console.error('[auth/callback] exchangeCodeForSession error:', error)
         }
+    } else {
+        console.warn('[auth/callback] no se recibió código en la URL')
     }
 
-    // Si no hay código o hubo error, redirigir a un error o login
-    // Agregamos un query param de error para mostrar feedback al usuario
     return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
 }
