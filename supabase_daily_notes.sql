@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS daily_notes (
     content TEXT NOT NULL,
     done BOOLEAN DEFAULT FALSE,
     created_by TEXT NOT NULL,
-    created_at DATE DEFAULT CURRENT_DATE,
+    created_at TIMESTAMPTZ DEFAULT now(),
     member_id UUID,
     member_name TEXT
 );
@@ -18,6 +18,11 @@ ALTER TABLE daily_notes
 ADD COLUMN IF NOT EXISTS habilita INTEGER DEFAULT 1,
 ADD COLUMN IF NOT EXISTS member_id UUID,
 ADD COLUMN IF NOT EXISTS member_name TEXT;
+
+-- Convertir created_at si era DATE (para seguridad si ya existe)
+ALTER TABLE daily_notes 
+ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at::TIMESTAMPTZ,
+ALTER COLUMN created_at SET DEFAULT now();
 
 -- 3. Habilitar RLS
 ALTER TABLE daily_notes ENABLE ROW LEVEL SECURITY;
