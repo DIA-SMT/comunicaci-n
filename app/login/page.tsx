@@ -21,14 +21,24 @@ export default function LoginPage() {
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search)
         const code = urlParams.get('code')
-        if (code) {
-            const next = urlParams.get('next') || '/'
-            const type = urlParams.get('type') || ''
+        const type = urlParams.get('type')
+        const nextParam = urlParams.get('next')
 
+        if (code) {
             // Redirigir al callback oficial para procesar el código
             const callbackUrl = new URL('/api/auth/callback', window.location.origin)
             callbackUrl.searchParams.set('code', code)
-            callbackUrl.searchParams.set('next', next === '/' && type === 'recovery' ? '/reset-password' : next)
+
+            // Determinamos el destino
+            // Si hay un 'next' explícito, lo usamos.
+            // Si es tipo 'recovery' o no sabemos el tipo pero hay código en login, 
+            // asumimos recuperación para que el usuario pueda cambiar su contraseña.
+            let next = nextParam
+            if (!next || next === '/') {
+                next = (type === 'recovery' || !type) ? '/reset-password' : '/'
+            }
+
+            callbackUrl.searchParams.set('next', next)
             if (type) callbackUrl.searchParams.set('type', type)
 
             router.replace(callbackUrl.pathname + callbackUrl.search)
