@@ -1,7 +1,6 @@
 'use client'
 
 import { Card, CardContent } from "@/components/ui/card"
-import { CheckCircle, AlertTriangle, Clock, CheckCircle2 } from "lucide-react"
 import { Project } from "@/types"
 
 interface ProjectSummaryProps {
@@ -62,9 +61,7 @@ export function ProjectSummary({ projects, currentFilter, onFilterChange, projec
                         onClick={() => onFilterChange('active')}
                         className={`flex-1 flex items-center py-2 px-4 transition-all cursor-pointer text-left w-full ${getActiveStyle('active')}`}
                     >
-                        <div className="rounded-full p-1.5 bg-emerald-100 mr-3 shrink-0">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        </div>
+                        <span className="text-2xl mr-3 shrink-0">🤪</span>
                         <div>
                             <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0">Activos</p>
                             <h3 className="text-lg font-bold text-slate-800 leading-none">{activeProjects}</h3>
@@ -75,9 +72,7 @@ export function ProjectSummary({ projects, currentFilter, onFilterChange, projec
                         onClick={() => onFilterChange('urgent')}
                         className={`flex-1 flex items-center py-2 px-4 transition-all cursor-pointer text-left w-full ${getActiveStyle('urgent')}`}
                     >
-                        <div className="rounded-full p-1.5 bg-red-100 mr-3 shrink-0">
-                            <AlertTriangle className="w-4 h-4 text-red-600" />
-                        </div>
+                        <span className="text-2xl mr-3 shrink-0">🔥</span>
                         <div>
                             <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0">Urgente</p>
                             <h3 className="text-lg font-bold text-slate-800 leading-none">{urgentProjects}</h3>
@@ -88,9 +83,7 @@ export function ProjectSummary({ projects, currentFilter, onFilterChange, projec
                         onClick={() => onFilterChange('due_soon')}
                         className={`flex-1 flex items-center py-2 px-4 transition-all cursor-pointer text-left w-full ${getActiveStyle('due_soon')}`}
                     >
-                        <div className="rounded-full p-1.5 bg-orange-100 mr-3 shrink-0">
-                            <Clock className="w-4 h-4 text-orange-600" />
-                        </div>
+                        <span className="text-2xl mr-3 shrink-0">⏰</span>
                         <div>
                             <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0">Vencen esta semana</p>
                             <h3 className="text-lg font-bold text-slate-800 leading-none">{dueSoonProjects}</h3>
@@ -101,11 +94,9 @@ export function ProjectSummary({ projects, currentFilter, onFilterChange, projec
                         onClick={() => onFilterChange('ready')}
                         className={`flex-1 flex items-center py-2 px-4 transition-all cursor-pointer text-left w-full ${getActiveStyle('ready')}`}
                     >
-                        <div className="rounded-full p-1.5 bg-purple-100 mr-3 shrink-0">
-                            <CheckCircle2 className="w-4 h-4 text-purple-600" />
-                        </div>
+                        <span className="text-2xl mr-3 shrink-0">👀</span>
                         <div>
-                            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0">Listo PP</p>
+                            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0">Para aprobación</p>
                             <h3 className="text-lg font-bold text-slate-800 leading-none">{readyProjects}</h3>
                         </div>
                     </button>
@@ -114,9 +105,7 @@ export function ProjectSummary({ projects, currentFilter, onFilterChange, projec
                         onClick={() => onFilterChange('completed')}
                         className={`flex-1 flex items-center py-2 px-4 transition-all cursor-pointer text-left w-full ${getActiveStyle('completed')}`}
                     >
-                        <div className="rounded-full p-1.5 bg-blue-100 mr-3 shrink-0">
-                            <CheckCircle className="w-4 h-4 text-blue-600" />
-                        </div>
+                        <span className="text-2xl mr-3 shrink-0">😎</span>
                         <div>
                             <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0">Finalizados</p>
                             <h3 className="text-lg font-bold text-slate-800 leading-none">{completedProjects}</h3>

@@ -40,6 +40,20 @@ export function Navbar() {
     return (
         <>
             <nav className="navbar relative">
+                {/* Reloj absolutamente centrado */}
+                {currentTime && (
+                    <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 items-center gap-3 px-6 py-2.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 z-10">
+                        <div className="flex flex-col items-center leading-tight min-w-[140px]">
+                            <span className="text-white font-semibold text-base tracking-wide">
+                                {currentTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                            </span>
+                            <span className="text-white/70 text-sm">
+                                {currentTime.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 <div className="navbar-container flex items-center justify-between w-full">
                     <div className="navbar-logo">
                         <Image
@@ -53,20 +67,6 @@ export function Navbar() {
                             unoptimized
                         />
                     </div>
-
-                    {/* Reloj minimalista centralizado */}
-                    {currentTime && (
-                        <div className="hidden md:flex items-center gap-3 px-6 py-2.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
-                            <div className="flex flex-col items-center leading-tight min-w-[140px]">
-                                <span className="text-white font-semibold text-base tracking-wide">
-                                    {currentTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
-                                </span>
-                                <span className="text-white/70 text-sm">
-                                    {currentTime.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })}
-                                </span>
-                            </div>
-                        </div>
-                    )}
 
                     {user && (
                         <>
