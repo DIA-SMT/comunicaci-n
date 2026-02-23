@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,24 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const router = useRouter()
+
+    // Relay para códigos de sesión que caen aquí por redirecciones de Supabase no autorizadas
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search)
+        const code = urlParams.get('code')
+        if (code) {
+            const next = urlParams.get('next') || '/'
+            const type = urlParams.get('type') || ''
+
+            // Redirigir al callback oficial para procesar el código
+            const callbackUrl = new URL('/api/auth/callback', window.location.origin)
+            callbackUrl.searchParams.set('code', code)
+            callbackUrl.searchParams.set('next', next === '/' && type === 'recovery' ? '/reset-password' : next)
+            if (type) callbackUrl.searchParams.set('type', type)
+
+            router.replace(callbackUrl.pathname + callbackUrl.search)
+        }
+    }, [router])
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()

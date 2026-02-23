@@ -5,8 +5,17 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url)
     const code = searchParams.get('code')
+    const type = searchParams.get('type')
+
     // if "next" is in param, use it as the redirect URL
-    const next = searchParams.get('next') ?? '/'
+    // Default to /reset-password if it's a recovery flow, otherwise /
+    let next = searchParams.get('next')
+    if (!next) {
+        next = type === 'recovery' ? '/reset-password' : '/'
+    }
+
+    // Importante: Creamos la respuesta PRIMERO para poder setearle las cookies
+    const response = NextResponse.redirect(`${origin}${next}`)
 
     if (code) {
         const cookieStore = await cookies()
@@ -19,15 +28,9 @@ export async function GET(request: Request) {
                         return cookieStore.getAll()
                     },
                     setAll(cookiesToSet) {
-                        try {
-                            cookiesToSet.forEach(({ name, value, options }) =>
-                                cookieStore.set(name, value, options)
-                            )
-                        } catch {
-                            // The `setAll` method was called from a Server Component.
-                            // This can be ignored if you have middleware refreshing
-                            // user sessions.
-                        }
+                        cookiesToSet.forEach(({ name, value, options }) =>
+                            response.cookies.set(name, value, options)
+                        )
                     },
                 },
             }
@@ -36,9 +39,7 @@ export async function GET(request: Request) {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
 
         if (!error) {
-            // Redirigir siempre a la URL proporcionada en 'next'
-            // Esto asegura que terminemos en /reset-password con la sesión activa
-            return NextResponse.redirect(`${origin}${next}`)
+            return response
         }
     }
 

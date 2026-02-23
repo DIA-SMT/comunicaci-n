@@ -63,7 +63,6 @@ export function Navbar() {
                             height={200}
                             className="logo-muni"
                             priority
-                            quality={100}
                             unoptimized
                         />
                     </div>
