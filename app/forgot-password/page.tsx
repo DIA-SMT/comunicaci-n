@@ -25,8 +25,12 @@ export default function ForgotPasswordPage() {
         setSuccess(false)
 
         try {
+            // Usamos una URL de redirección simple para máxima compatibilidad con el whitelist de Supabase
+            // El 'relay' que pusimos en login y el callback se encargarán del resto
+            const redirectTo = `${window.location.origin}/api/auth/callback`
+
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/api/auth/callback?next=/reset-password`,
+                redirectTo,
             })
 
             if (error) {
