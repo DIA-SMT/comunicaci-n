@@ -10,9 +10,10 @@ import {
     SheetContent,
     SheetHeader,
     SheetTitle,
-    SheetTrigger,
 } from '@/components/ui/sheet'
-import { StickyNote, Loader2, Trash2, Plus } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { StickyNote, Loader2, Trash2, Plus, Pencil, Check, X as CloseIcon } from 'lucide-react'
+import { Member } from '@/types'
 
 type DailyNote = {
     id: string
@@ -21,6 +22,8 @@ type DailyNote = {
     created_by: string
     created_at: string
     habilita: number
+    member_id?: string
+    member_name?: string
 }
 
 interface DailyNotesPanelProps {
@@ -34,6 +37,13 @@ export function DailyNotesPanel({ open, onOpenChange }: DailyNotesPanelProps) {
     const [newContent, setNewContent] = useState('')
     const [saving, setSaving] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [members, setMembers] = useState<Member[]>([])
+    const [selectedMemberId, setSelectedMemberId] = useState<string>('none')
+
+    // State for editing
+    const [editingId, setEditingId] = useState<string | null>(null)
+    const [editContent, setEditContent] = useState('')
+    const [updating, setUpdating] = useState(false)
 
     // Deshabilita automáticamente las notas de días anteriores
     const disableOldNotes = useCallback(async () => {
@@ -51,6 +61,15 @@ export function DailyNotesPanel({ open, onOpenChange }: DailyNotesPanelProps) {
         } catch (error) {
             console.error('Error disabling old notes:', error)
         }
+    }, [])
+
+    const fetchMembers = useCallback(async () => {
+        const { data } = await supabase
+            .from('members')
+            .select('*')
+            .eq('habilita', 1)
+            .order('full_name')
+        if (data) setMembers(data)
     }, [])
 
     const fetchNotes = useCallback(async () => {
@@ -86,8 +105,9 @@ export function DailyNotesPanel({ open, onOpenChange }: DailyNotesPanelProps) {
     useEffect(() => {
         if (open) {
             fetchNotes()
+            fetchMembers()
         }
-    }, [open, fetchNotes])
+    }, [open, fetchNotes, fetchMembers])
 
     // Realtime subscription
     useEffect(() => {
@@ -118,16 +138,21 @@ export function DailyNotesPanel({ open, onOpenChange }: DailyNotesPanelProps) {
 
         setSaving(true)
         try {
+            const selectedMember = members.find(m => m.id === selectedMemberId)
+
             const { error } = await supabase
                 .from('daily_notes')
                 .insert({
                     content: newContent.trim(),
                     created_by: user.email || user.id,
+                    member_id: selectedMemberId === 'none' ? null : selectedMemberId,
+                    member_name: selectedMember ? selectedMember.full_name : null
                 })
 
             if (error) throw error
 
             setNewContent('')
+            setSelectedMemberId('none')
             // Realtime will trigger a refetch, but also do it immediately for responsiveness
             fetchNotes()
         } catch (error) {
@@ -135,6 +160,29 @@ export function DailyNotesPanel({ open, onOpenChange }: DailyNotesPanelProps) {
             alert('Error al guardar la nota')
         } finally {
             setSaving(false)
+        }
+    }
+
+    const handleUpdate = async () => {
+        if (!editingId || !editContent.trim() || updating) return
+
+        setUpdating(true)
+        try {
+            const { error } = await supabase
+                .from('daily_notes')
+                .update({ content: editContent.trim() })
+                .eq('id', editingId)
+
+            if (error) throw error
+
+            setEditingId(null)
+            setEditContent('')
+            fetchNotes()
+        } catch (error) {
+            console.error('Error updating note:', error)
+            alert('Error al actualizar la nota')
+        } finally {
+            setUpdating(false)
         }
     }
 
@@ -159,16 +207,33 @@ export function DailyNotesPanel({ open, onOpenChange }: DailyNotesPanelProps) {
                 .eq('id', noteId)
 
             if (error) throw error
-        } catch (error) {
-            console.error('Error deleting note:', error)
+
+            // Refrescar manualmente por las dudas
+            fetchNotes()
+        } catch (error: any) {
+            console.error('Error deleting note:', error.message || error)
+            alert('Error al eliminar la nota: ' + (error.message || 'Error desconocido'))
         }
     }
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault()
-            handleSave()
+            if (editingId) {
+                handleUpdate()
+            } else {
+                handleSave()
+            }
         }
+        if (e.key === 'Escape' && editingId) {
+            setEditingId(null)
+            setEditContent('')
+        }
+    }
+
+    const startEditing = (note: DailyNote) => {
+        setEditingId(note.id)
+        setEditContent(note.content)
     }
 
     return (
@@ -196,11 +261,29 @@ export function DailyNotesPanel({ open, onOpenChange }: DailyNotesPanelProps) {
                         onKeyDown={handleKeyDown}
                         disabled={saving}
                     />
-                    <div className="flex items-center justify-between mt-2">
-                        <span className="text-[10px] text-amber-500/70">Ctrl+Enter para guardar</span>
+                    <div className="flex items-center justify-between mt-2 gap-2">
+                        <div className="flex-1 max-w-[180px]">
+                            <Select
+                                value={selectedMemberId}
+                                onValueChange={setSelectedMemberId}
+                                disabled={saving}
+                            >
+                                <SelectTrigger className="h-8 text-[11px] bg-white border-amber-200 text-amber-900 focus:ring-amber-400/50">
+                                    <SelectValue placeholder="Vincular a..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">Sin vincular</SelectItem>
+                                    {members.map((member) => (
+                                        <SelectItem key={member.id} value={member.id}>
+                                            {member.full_name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                         <Button
                             size="sm"
-                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                            className="bg-amber-600 hover:bg-amber-700 text-white flex-shrink-0"
                             disabled={saving || !newContent.trim()}
                             onClick={handleSave}
                         >
@@ -251,26 +334,77 @@ export function DailyNotesPanel({ open, onOpenChange }: DailyNotesPanelProps) {
                                             />
                                         </label>
                                         <div className="flex-1 min-w-0">
-                                            <p
-                                                className={`text-sm whitespace-pre-wrap break-words ${note.done
-                                                    ? 'line-through text-emerald-700/60'
-                                                    : 'text-slate-800'
-                                                    }`}
-                                            >
-                                                {note.content}
-                                            </p>
-                                            <p className="text-[10px] text-slate-400 mt-1.5">
-                                                {note.created_by}
-                                            </p>
+                                            {editingId === note.id ? (
+                                                <div className="space-y-2">
+                                                    <textarea
+                                                        className="w-full resize-none rounded border border-amber-300 bg-white p-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50"
+                                                        rows={3}
+                                                        value={editContent}
+                                                        onChange={(e) => setEditContent(e.target.value)}
+                                                        onKeyDown={handleKeyDown}
+                                                        autoFocus
+                                                    />
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="h-7 w-7 text-slate-400 hover:text-slate-600"
+                                                            onClick={() => setEditingId(null)}
+                                                        >
+                                                            <CloseIcon className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="h-7 w-7 text-emerald-500 hover:text-emerald-700"
+                                                            onClick={handleUpdate}
+                                                            disabled={updating || !editContent.trim()}
+                                                        >
+                                                            {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <p
+                                                        className={`text-sm whitespace-pre-wrap break-words ${note.done
+                                                            ? 'line-through text-emerald-700/60'
+                                                            : 'text-slate-800'
+                                                            }`}
+                                                    >
+                                                        {note.content}
+                                                    </p>
+                                                    <div className="flex items-center gap-2 mt-1.5">
+                                                        {note.member_name && (
+                                                            <span className="px-1.5 py-0.5 rounded-full bg-amber-200/50 text-amber-800 text-[10px] font-medium border border-amber-300/50">
+                                                                @{note.member_name}
+                                                            </span>
+                                                        )}
+                                                        <p className="text-[10px] text-slate-400">
+                                                            {note.created_by}
+                                                        </p>
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-7 w-7 text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                                            onClick={() => handleDelete(note.id)}
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </Button>
+                                        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-7 w-7 text-slate-300 hover:text-amber-600 hover:bg-amber-50"
+                                                onClick={() => startEditing(note)}
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-7 w-7 text-slate-300 hover:text-red-500 hover:bg-red-50"
+                                                onClick={() => handleDelete(note.id)}
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
                             ))
