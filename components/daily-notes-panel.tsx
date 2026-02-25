@@ -48,13 +48,13 @@ export function DailyNotesPanel({ open, onOpenChange }: DailyNotesPanelProps) {
     // Deshabilita automáticamente las notas de días anteriores
     const disableOldNotes = useCallback(async () => {
         try {
-            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+            const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000)
 
             const { error } = await supabase
                 .from('daily_notes')
                 .update({ habilita: 0 })
                 .eq('habilita', 1)
-                .lt('created_at', twentyFourHoursAgo.toISOString())
+                .lt('created_at', seventyTwoHoursAgo.toISOString())
 
             if (error) console.error('Error disabling old notes:', error)
         } catch (error) {
@@ -74,16 +74,16 @@ export function DailyNotesPanel({ open, onOpenChange }: DailyNotesPanelProps) {
     const fetchNotes = useCallback(async () => {
         setLoading(true)
         try {
-            // Primero deshabilitamos notas de más de 24hs
+            // Primero deshabilitamos notas de más de 72hs
             await disableOldNotes()
 
-            // Rango de las últimas 24 horas
-            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+            // Rango de las últimas 72 horas
+            const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000)
 
             const { data, error } = await supabase
                 .from('daily_notes')
                 .select('*')
-                .gte('created_at', twentyFourHoursAgo.toISOString())
+                .gte('created_at', seventyTwoHoursAgo.toISOString())
                 .eq('habilita', 1)
                 .order('created_at', { ascending: false })
 
