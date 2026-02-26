@@ -298,7 +298,7 @@ export function DailyNotesPanel({ open, onOpenChange }: DailyNotesPanelProps) {
                 </div>
 
                 {/* Notes list */}
-                <ScrollArea className="flex-1">
+                <ScrollArea className="flex-1 min-h-0">
                     <div className="p-4 space-y-3">
                         {loading ? (
                             <div className="flex justify-center py-8">
