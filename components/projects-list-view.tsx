@@ -493,9 +493,9 @@ export function ProjectsListView() {
                                                 ) : (
                                                     <Badge
                                                         className={`ml-2 shrink-0 font-semibold border ${project.priority === 'Urgente' ? 'bg-red-200 text-red-900 border-red-400 dark:bg-red-700 dark:text-red-100 dark:border-red-500' :
-                                                                project.priority === 'Alta' ? 'bg-orange-200 text-orange-900 border-orange-400 dark:bg-orange-700 dark:text-orange-100 dark:border-orange-500' :
-                                                                    project.priority === 'Media' ? 'bg-amber-200 text-amber-900 border-amber-400 dark:bg-amber-700 dark:text-amber-100 dark:border-amber-500' :
-                                                                        'bg-emerald-200 text-emerald-900 border-emerald-400 dark:bg-emerald-700 dark:text-emerald-100 dark:border-emerald-500'
+                                                            project.priority === 'Alta' ? 'bg-orange-200 text-orange-900 border-orange-400 dark:bg-orange-700 dark:text-orange-100 dark:border-orange-500' :
+                                                                project.priority === 'Media' ? 'bg-amber-200 text-amber-900 border-amber-400 dark:bg-amber-700 dark:text-amber-100 dark:border-amber-500' :
+                                                                    'bg-emerald-200 text-emerald-900 border-emerald-400 dark:bg-emerald-700 dark:text-emerald-100 dark:border-emerald-500'
                                                             }`}
                                                     >
                                                         {project.priority}
@@ -661,9 +661,9 @@ export function ProjectsListView() {
                                             ) : (
                                                 <Badge
                                                     className={`ml-2 shrink-0 font-semibold border ${project.priority === 'Urgente' ? 'bg-red-200 text-red-900 border-red-400 dark:bg-red-700 dark:text-red-100 dark:border-red-500' :
-                                                            project.priority === 'Alta' ? 'bg-orange-200 text-orange-900 border-orange-400 dark:bg-orange-700 dark:text-orange-100 dark:border-orange-500' :
-                                                                project.priority === 'Media' ? 'bg-amber-200 text-amber-900 border-amber-400 dark:bg-amber-700 dark:text-amber-100 dark:border-amber-500' :
-                                                                    'bg-emerald-200 text-emerald-900 border-emerald-400 dark:bg-emerald-700 dark:text-emerald-100 dark:border-emerald-500'
+                                                        project.priority === 'Alta' ? 'bg-orange-200 text-orange-900 border-orange-400 dark:bg-orange-700 dark:text-orange-100 dark:border-orange-500' :
+                                                            project.priority === 'Media' ? 'bg-amber-200 text-amber-900 border-amber-400 dark:bg-amber-700 dark:text-amber-100 dark:border-amber-500' :
+                                                                'bg-emerald-200 text-emerald-900 border-emerald-400 dark:bg-emerald-700 dark:text-emerald-100 dark:border-emerald-500'
                                                         }`}
                                                 >
                                                     {project.priority}
@@ -701,8 +701,8 @@ export function ProjectsListView() {
             {!dailyNotesOpen && (
                 <Button
                     onClick={() => setDailyNotesOpen(true)}
-                    size="icon"
-                    className="fixed bottom-4 left-4 z-50 h-12 w-12 rounded-full shadow-lg bg-amber-400 hover:bg-amber-500 text-amber-900 transition-transform hover:scale-110 border-2 border-white/20"
+                    size="lg"
+                    className="fixed bottom-4 left-4 z-50 h-14 w-14 rounded-full shadow-lg bg-amber-400 hover:bg-amber-500 text-amber-900 transition-transform hover:scale-110 border-2 border-white/20"
                     title="Notas del Día"
                 >
                     <StickyNote className="h-6 w-6" />
