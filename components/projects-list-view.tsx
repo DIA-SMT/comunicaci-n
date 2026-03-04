@@ -38,7 +38,25 @@ export function ProjectsListView() {
     const [projectProgress, setProjectProgress] = useState<Record<string, number>>({})
     const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
     const [dailyNotesOpen, setDailyNotesOpen] = useState(false)
+    const [notesCount, setNotesCount] = useState(0)
     const { role, user, loading: authLoading } = useAuth()
+
+    const fetchNotesCount = useCallback(async () => {
+        try {
+            const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000)
+            const { count, error } = await supabase
+                .from('daily_notes')
+                .select('*', { count: 'exact', head: true })
+                .gte('created_at', seventyTwoHoursAgo.toISOString())
+                .eq('habilita', 1)
+
+            if (!error && count !== null) {
+                setNotesCount(count)
+            }
+        } catch (error) {
+            console.error('Error fetching notes count:', error)
+        }
+    }, [])
 
     useEffect(() => {
         if (authLoading) return
@@ -55,7 +73,7 @@ export function ProjectsListView() {
             setLoadError('La carga tardó demasiado. Reintentá.')
         }, 12000)
 
-        Promise.all([fetchProjects(), fetchTasksAndProgress()]).finally(() => window.clearTimeout(t))
+        Promise.all([fetchProjects(), fetchTasksAndProgress(), fetchNotesCount()]).finally(() => window.clearTimeout(t))
 
         // Suscripción a cambios en tiempo real de la tabla projects
         const projectsChannel = supabase
@@ -96,12 +114,29 @@ export function ProjectsListView() {
             )
             .subscribe()
 
+        // Suscripción a cambios en tiempo real de la tabla daily_notes
+        const notesChannel = supabase
+            .channel('daily-notes-count-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'daily_notes'
+                },
+                () => {
+                    fetchNotesCount()
+                }
+            )
+            .subscribe()
+
         // Cleanup: cancelar suscripción cuando el componente se desmonta
         return () => {
             supabase.removeChannel(projectsChannel)
             supabase.removeChannel(tasksChannel)
+            supabase.removeChannel(notesChannel)
         }
-    }, [authLoading, user?.id])
+    }, [authLoading, user?.id, fetchNotesCount])
 
     const fetchProjects = useCallback(async () => {
         try {
@@ -699,14 +734,21 @@ export function ProjectsListView() {
 
             {/* Floating Daily Notes Button */}
             {!dailyNotesOpen && (
-                <Button
-                    onClick={() => setDailyNotesOpen(true)}
-                    size="lg"
-                    className="fixed bottom-4 left-4 z-50 h-14 w-14 rounded-full shadow-lg bg-amber-400 hover:bg-amber-500 text-amber-900 transition-transform hover:scale-110 border-2 border-white/20"
-                    title="Notas del Día"
-                >
-                    <StickyNote className="h-6 w-6" />
-                </Button>
+                <div className="fixed bottom-4 left-4 z-50">
+                    <Button
+                        onClick={() => setDailyNotesOpen(true)}
+                        size="lg"
+                        className="relative h-14 w-14 rounded-full shadow-lg bg-amber-400 hover:bg-amber-500 text-amber-900 transition-transform hover:scale-110 border-2 border-white/20"
+                        title="Notas del Día"
+                    >
+                        <StickyNote className="h-6 w-6" />
+                        {notesCount > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-slate-50 shadow-sm animate-in fade-in zoom-in duration-300">
+                                {notesCount}
+                            </span>
+                        )}
+                    </Button>
+                </div>
             )}
         </div>
     )
