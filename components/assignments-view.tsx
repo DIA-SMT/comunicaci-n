@@ -7,6 +7,7 @@ import { Project, Task, TaskAssignee } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ChevronDown, ChevronUp, ArrowLeft, User } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -26,6 +27,7 @@ type AssigneeWithTasks = {
 export function AssignmentsView() {
     const router = useRouter()
     const [assignees, setAssignees] = useState<AssigneeWithTasks[]>([])
+    const [statusFilter, setStatusFilter] = useState<string>('all')
 
     const [loading, setLoading] = useState(true)
     const [expandedAssignee, setExpandedAssignee] = useState<string | null>(null)
@@ -154,6 +156,19 @@ export function AssignmentsView() {
 
     if (loading) return <div className="p-8">Cargando asignaciones...</div>
 
+    const filteredAssignees = assignees.map(assignee => {
+        const filteredTasks = assignee.tasks.filter(task => {
+            if (statusFilter === 'all') return true;
+            const status = task.status || 'Sin empezar';
+            if (statusFilter === 'Pendientes') return status === 'Sin empezar' || status === 'En desarrollo';
+            return status === statusFilter;
+        });
+        return {
+            ...assignee,
+            tasks: filteredTasks
+        };
+    }).filter(assignee => assignee.tasks.length > 0);
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
             <div className="max-w-7xl mx-auto">
@@ -167,21 +182,37 @@ export function AssignmentsView() {
                     Volver a proyectos
                 </Button>
 
-                <div className="mb-8">
-                    <h1 className="text-4xl font-bold text-slate-900 mb-2">Asignaciones</h1>
-                    <p className="text-slate-600">Tareas asignadas por persona</p>
+                <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h1 className="text-4xl font-bold text-slate-900 mb-2">Asignaciones</h1>
+                        <p className="text-slate-600">Tareas asignadas por persona</p>
+                    </div>
+                    <div className="w-full sm:w-64">
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="bg-white">
+                                <SelectValue placeholder="Filtrar por estado" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todas las tareas</SelectItem>
+                                <SelectItem value="Pendientes">Pendientes</SelectItem>
+                                <SelectItem value="Sin empezar">Sin empezar</SelectItem>
+                                <SelectItem value="En desarrollo">En desarrollo</SelectItem>
+                                <SelectItem value="Terminada">Terminadas</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
-                {assignees.length === 0 ? (
+                {filteredAssignees.length === 0 ? (
                     // ... Empty State ...
                     <Card className="p-8 text-center">
                         <User className="w-16 h-16 mx-auto text-slate-300 mb-4" />
                         <h3 className="text-xl font-semibold text-slate-700 mb-2">No hay asignaciones</h3>
-                        <p className="text-slate-500">Crea tareas y asigna responsables para verlas aquí</p>
+                        <p className="text-slate-500">No se encontraron tareas con los filtros actuales</p>
                     </Card>
                 ) : (
                     <div className="columns-1 lg:columns-2 gap-6 space-y-6">
-                        {assignees.map((assignee) => {
+                        {filteredAssignees.map((assignee) => {
                             const isExpanded = expandedAssignee === assignee.name
                             return (
                                 <Card key={assignee.name} className="break-inside-avoid border-l-4 border-l-blue-500 transition-all duration-200">
