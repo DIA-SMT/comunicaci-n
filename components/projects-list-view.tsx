@@ -329,6 +329,14 @@ export function ProjectsListView() {
 
     const priorityOrder: Record<string, number> = { Urgente: 0, Alta: 1, Media: 2, Baja: 3 }
 
+    const isProjectExpired = (p: Project) => {
+        if (p.completed_at) return false
+        if (!p.deadline) return false
+        const limit = new Date(p.deadline)
+        limit.setHours(23, 59, 59, 999)
+        return new Date() > limit
+    }
+
     const sortedProjects = [...filteredProjects].sort((a, b) => {
         if (sortBy === 'priority') {
             return (priorityOrder[a.priority ?? 'Baja'] ?? 3) - (priorityOrder[b.priority ?? 'Baja'] ?? 3)
@@ -483,13 +491,18 @@ export function ProjectsListView() {
                                 {sortedProjects.map((project) => (
                                     <Card
                                         key={project.id}
-                                        className={`hover:shadow-xl transition-all cursor-pointer hover:scale-105 border-l-4 ${project.priority === 'Urgente' ? 'bg-red-100 hover:bg-red-200 border-l-red-500 dark:bg-red-950 dark:hover:bg-red-900 dark:border-l-red-400' :
+                                        className={`relative overflow-hidden hover:shadow-xl transition-all cursor-pointer hover:scale-105 border-l-4 ${project.priority === 'Urgente' ? 'bg-red-100 hover:bg-red-200 border-l-red-500 dark:bg-red-950 dark:hover:bg-red-900 dark:border-l-red-400' :
                                             project.priority === 'Alta' ? 'bg-orange-100 hover:bg-orange-200 border-l-orange-500 dark:bg-orange-950 dark:hover:bg-orange-900 dark:border-l-orange-400' :
                                                 project.priority === 'Media' ? 'bg-amber-100 hover:bg-amber-200 border-l-amber-500 dark:bg-amber-950 dark:hover:bg-amber-900 dark:border-l-amber-400' :
                                                     'bg-emerald-100 hover:bg-emerald-200 border-l-emerald-500 dark:bg-emerald-950 dark:hover:bg-emerald-900 dark:border-l-emerald-400'
                                             }`}
                                         onClick={() => router.push(`/projects/${project.id}`)}
                                     >
+                                        {isProjectExpired(project) && (
+                                            <div className="absolute top-4 -left-10 w-36 transform -rotate-45 bg-red-600/80 backdrop-blur-sm text-white text-center text-[9px] font-bold py-0.5 shadow-sm uppercase tracking-wider z-10 pointer-events-none">
+                                                Vencido
+                                            </div>
+                                        )}
                                         <CardHeader className="pb-3">
                                             <div className="flex justify-between items-start mb-2">
                                                 <CardTitle className="text-lg font-bold line-clamp-2">
@@ -561,13 +574,15 @@ export function ProjectsListView() {
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center justify-between text-sm">
-                                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${project.status === 'En Progreso' ? 'bg-green-100 text-green-800' :
-                                                    project.status === 'Completado' ? 'bg-blue-100 text-blue-800' :
-                                                        'bg-yellow-100 text-yellow-800'
-                                                    }`}>
-                                                    {project.status}
-                                                </span>
+                                            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${project.status === 'En Progreso' ? 'bg-green-100 text-green-800' :
+                                                        project.status === 'Completado' ? 'bg-blue-100 text-blue-800' :
+                                                            'bg-yellow-100 text-yellow-800'
+                                                        }`}>
+                                                        {project.status}
+                                                    </span>
+                                                </div>
                                                 {project.deadline && (
                                                     <div className="flex items-center gap-1 text-slate-500">
                                                         <Calendar className="w-4 h-4" />
@@ -617,12 +632,17 @@ export function ProjectsListView() {
                                     <div
                                         key={project.id}
                                         onClick={() => router.push(`/projects/${project.id}`)}
-                                        className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 cursor-pointer transition-colors border-l-4 ${index !== filteredProjects.length - 1 ? 'border-b border-slate-100' : ''} ${project.priority === 'Urgente' ? 'bg-red-50 hover:bg-red-100 border-l-red-500 dark:bg-red-950/60 dark:hover:bg-red-900/60 dark:border-l-red-400' :
+                                        className={`relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 cursor-pointer transition-colors border-l-4 ${index !== filteredProjects.length - 1 ? 'border-b border-slate-100' : ''} ${project.priority === 'Urgente' ? 'bg-red-50 hover:bg-red-100 border-l-red-500 dark:bg-red-950/60 dark:hover:bg-red-900/60 dark:border-l-red-400' :
                                             project.priority === 'Alta' ? 'bg-orange-50 hover:bg-orange-100 border-l-orange-500 dark:bg-orange-950/60 dark:hover:bg-orange-900/60 dark:border-l-orange-400' :
                                                 project.priority === 'Media' ? 'bg-amber-50 hover:bg-amber-100 border-l-amber-500 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 dark:border-l-amber-400' :
                                                     'bg-emerald-50 hover:bg-emerald-100 border-l-emerald-500 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 dark:border-l-emerald-400'
                                             }`}
                                     >
+                                        {isProjectExpired(project) && (
+                                            <div className="absolute top-2 -left-10 w-32 transform -rotate-45 bg-red-600/80 backdrop-blur-sm text-white text-center text-[9px] font-bold py-0.5 shadow-sm uppercase tracking-wider z-10 pointer-events-none">
+                                                Vencido
+                                            </div>
+                                        )}
                                         <div className="flex-1 min-w-0 mr-4 mb-3 sm:mb-0">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <h3 className="font-semibold text-slate-900 truncate">{project.title}</h3>

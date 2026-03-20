@@ -172,6 +172,14 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
         }
     }
 
+    const isProjectExpired = (p: Project) => {
+        if (p.completed_at) return false
+        if (!p.deadline) return false
+        const limit = new Date(p.deadline)
+        limit.setHours(23, 59, 59, 999)
+        return new Date() > limit
+    }
+
     if (loading) return <div className="p-8">Cargando proyecto...</div>
     if (!project) return <div className="p-8">Proyecto no encontrado</div>
 
@@ -219,13 +227,18 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                 )}
 
                 {/* Project Info Card */}
-                <Card className="mb-6 border-l-4" style={{
+                <Card className="relative overflow-hidden mb-6 border-l-4" style={{
                     borderLeftColor:
                         project.priority === 'Urgente' ? '#ef4444' :
                             project.priority === 'Alta' ? '#f97316' :
                                 project.priority === 'Media' ? '#eab308' :
                                     '#10b981'
                 }}>
+                    {isProjectExpired(project) && (
+                        <div className="absolute top-5 -left-12 w-44 transform -rotate-45 bg-red-600/80 backdrop-blur-sm text-white text-center text-[10px] font-bold py-1 shadow-sm uppercase tracking-wider z-10 pointer-events-none">
+                            Vencido
+                        </div>
+                    )}
                     <CardHeader>
                         <div className="flex justify-between items-start">
                             <div className="flex-1">

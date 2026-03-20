@@ -237,7 +237,7 @@ export function DailyNotesPanel({ open, onOpenChange }: DailyNotesPanelProps) {
                 <SheetHeader className="px-5 pt-5 pb-4 border-b bg-amber-50/80 flex-shrink-0">
                     <SheetTitle className="flex items-center gap-2 text-amber-900">
                         <StickyNote className="w-5 h-5" />
-                        Notas del Día
+                        Notas (72hs disponibles)
                     </SheetTitle>
                     <p className="text-xs text-amber-700/70">
                         {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
