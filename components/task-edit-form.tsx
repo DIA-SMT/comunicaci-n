@@ -36,6 +36,7 @@ export function TaskEditForm({
     const [formData, setFormData] = useState({
         title: task.title,
         status: task.status || 'Sin empezar',
+        deadline: task.deadline || '',
         notes: task.notes || '',
         link: task.link || ''
     })
@@ -116,6 +117,7 @@ export function TaskEditForm({
                 .update({
                     title: formData.title,
                     status: formData.status,
+                    deadline: formData.deadline || null,
                     notes: formData.notes || null,
                     link: formData.link || null,
                 })
@@ -255,6 +257,15 @@ export function TaskEditForm({
                                     <SelectItem value="Terminada">Terminada</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="deadline">Fecha de vencimiento</Label>
+                            <Input
+                                id="deadline"
+                                type="date"
+                                value={formData.deadline}
+                                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                            />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="assignees">Responsables</Label>
