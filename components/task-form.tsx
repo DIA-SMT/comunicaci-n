@@ -31,6 +31,7 @@ export function TaskForm({
         project_id: projectId || '',
         title: '',
         status: 'Sin empezar',
+        deadline: '',
         notes: '',
         link: ''
     })
@@ -107,6 +108,7 @@ export function TaskForm({
                     project_id: formData.project_id || null,
                     title: formData.title,
                     status: formData.status,
+                    deadline: formData.deadline || null,
                     notes: formData.notes || null,
                     link: formData.link || null,
                 }])
@@ -178,6 +180,7 @@ export function TaskForm({
                 project_id: projectId || '',
                 title: '',
                 status: 'Sin empezar',
+                deadline: '',
                 notes: '',
                 link: ''
             })
@@ -249,6 +252,15 @@ export function TaskForm({
                                 <SelectItem value="Terminada">Terminada</SelectItem>
                             </SelectContent>
                         </Select>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="deadline">Fecha de vencimiento</Label>
+                        <Input
+                            id="deadline"
+                            type="date"
+                            value={formData.deadline}
+                            onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                        />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="assignees">Responsables</Label>

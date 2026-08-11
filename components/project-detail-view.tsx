@@ -447,6 +447,13 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                                                 </div>
                                             )}
 
+                                            {task.deadline && (
+                                                <div className="flex items-center gap-1.5 text-sm text-slate-600 mb-2">
+                                                    <Calendar className="w-4 h-4" />
+                                                    <span>Vence: {new Date(task.deadline + 'T00:00:00').toLocaleDateString()}</span>
+                                                </div>
+                                            )}
+
                                             {task.notes && (
                                                 <p className="text-sm text-slate-600 mb-2">{task.notes}</p>
                                             )}
