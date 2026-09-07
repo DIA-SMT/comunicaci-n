@@ -30,6 +30,8 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
     const [activeTaskForCompletion, setActiveTaskForCompletion] = useState<TaskWithAssignees | null>(null)
     const [isEditingTitle, setIsEditingTitle] = useState(false)
     const [editedTitle, setEditedTitle] = useState('')
+    const [isEditingDeadline, setIsEditingDeadline] = useState(false)
+    const [editedDeadline, setEditedDeadline] = useState('')
 
     const fetchProjectData = useCallback(async () => {
         try {
@@ -132,6 +134,35 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
             if (project && oldTitle) {
                 setProject({ ...project, title: oldTitle })
             }
+        }
+    }
+
+    const handleUpdateDeadline = async () => {
+        if (!project) return
+
+        if (!editedDeadline) {
+            alert('Ingresá una fecha límite')
+            return
+        }
+
+        const oldDeadline = project.deadline
+
+        // Optimistic update
+        setProject({ ...project, deadline: editedDeadline })
+        setIsEditingDeadline(false)
+
+        try {
+            const { error } = await supabase
+                .from('projects')
+                .update({ deadline: editedDeadline })
+                .eq('id', projectId)
+
+            if (error) throw error
+        } catch (error) {
+            console.error('Error updating project deadline:', error)
+            alert('No se pudo actualizar la fecha límite del proyecto')
+            // Rollback
+            setProject({ ...project, deadline: oldDeadline })
         }
     }
 
@@ -325,12 +356,57 @@ export function ProjectDetailView({ projectId }: { projectId: string }) {
                                         {project.status}
                                     </Badge>
                                 </div>
-                                {project.deadline && (
+                                {(project.deadline || (role === 'admin' && !project.completed_at)) && (
                                     <div className="flex items-center gap-2 text-slate-600">
-                                        <Calendar className="w-4 h-4" />
-                                        <span className="text-sm">
-                                            Fecha límite: {new Date(project.deadline).toLocaleDateString()}
-                                        </span>
+                                        <Calendar className="w-4 h-4 shrink-0" />
+                                        {isEditingDeadline ? (
+                                            <div className="flex items-center gap-1">
+                                                <Input
+                                                    type="date"
+                                                    value={editedDeadline}
+                                                    onChange={(e) => setEditedDeadline(e.target.value)}
+                                                    className="h-8 w-[150px]"
+                                                    autoFocus
+                                                />
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={handleUpdateDeadline}
+                                                    className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                >
+                                                    <Check className="w-4 h-4" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => setIsEditingDeadline(false)}
+                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <span className="text-sm">
+                                                    Fecha límite: {project.deadline
+                                                        ? new Date(project.deadline.slice(0, 10) + 'T00:00:00').toLocaleDateString()
+                                                        : 'sin definir'}
+                                                </span>
+                                                {role === 'admin' && !project.completed_at && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => {
+                                                            setEditedDeadline(project.deadline ? project.deadline.slice(0, 10) : '')
+                                                            setIsEditingDeadline(true)
+                                                        }}
+                                                        className="h-7 px-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                                                    >
+                                                        <Pencil className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                )}
+                                            </>
+                                        )}
                                     </div>
                                 )}
                             </div>
