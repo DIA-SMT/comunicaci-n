@@ -8,6 +8,9 @@ type AuthContextType = {
     user: User | null
     session: Session | null
     role: 'admin' | 'common' | null
+    // Solo quien tenga `profiles.puede_asignar = true` puede repartir responsables.
+    // Es independiente de `role`: un admin sin el permiso administra todo menos eso.
+    canAssign: boolean
     loading: boolean
     signOut: () => Promise<void>
 }
@@ -16,6 +19,7 @@ const AuthContext = createContext<AuthContextType>({
     user: null,
     session: null,
     role: null,
+    canAssign: false,
     loading: true,
     signOut: async () => { }
 })
@@ -24,6 +28,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null)
     const [session, setSession] = useState<Session | null>(null)
     const [role, setRole] = useState<'admin' | 'common' | null>(null)
+    const [canAssign, setCanAssign] = useState(false)
     const [loading, setLoading] = useState(true)
 
     const lastUserId = useRef<string | null>(null)
@@ -49,7 +54,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     lastUserId.current = currentSession.user.id
                     const { data: profile } = await supabase
                         .from('profiles')
-                        .select('role')
+                        .select('*')
                         .eq('id', currentSession.user.id)
                         .eq('habilita', 1)
                         .maybeSingle()
@@ -61,12 +66,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         setSession(null)
                         setUser(null)
                         setRole(null)
+                        setCanAssign(false)
                         lastUserId.current = null
                     } else {
                         setRole((profile.role as 'admin' | 'common') || 'common')
+                        setCanAssign(profile.puede_asignar === true)
                     }
                 } else {
                     setRole(null)
+                    setCanAssign(false)
                     lastUserId.current = null
                 }
 
@@ -87,6 +95,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         const payload = await res.json()
                         // payload.user puede ser minimal; mantenemos el user de sesión local si existe.
                         setRole(payload.role ?? 'common')
+                        setCanAssign(payload.canAssign === true)
                         if (!currentSession?.user && payload.user) {
                             // fallback mínimo para UI (Navbar usa email)
                             setUser({ ...(payload.user ?? {}) } as any)
@@ -96,6 +105,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         setSession(null)
                         setUser(null)
                         setRole(null)
+                        setCanAssign(false)
                         lastUserId.current = null
                     }
                 } catch {
@@ -107,6 +117,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setSession(null)
                 setUser(null)
                 setRole(null)
+                setCanAssign(false)
             } finally {
                 setLoading(false)
                 if (loadingTimeoutRef.current) {
@@ -127,6 +138,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     setSession(null)
                     setUser(null)
                     setRole(null)
+                    setCanAssign(false)
                     lastUserId.current = null
                     setLoading(false)
                     return
@@ -141,7 +153,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         lastUserId.current = newSession.user.id
                         const { data: profile } = await supabase
                             .from('profiles')
-                            .select('role')
+                            .select('*')
                             .eq('id', newSession.user.id)
                             .eq('habilita', 1)
                             .maybeSingle()
@@ -152,19 +164,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             setSession(null)
                             setUser(null)
                             setRole(null)
+                            setCanAssign(false)
                             lastUserId.current = null
                         } else {
                             setRole((profile.role as 'admin' | 'common') || 'common')
+                            setCanAssign(profile.puede_asignar === true)
                         }
                     } else {
                         lastUserId.current = null
                         setRole(null)
+                        setCanAssign(false)
                     }
                 } else if (!newSession && lastUserId.current) {
                     // Handle logout / session expiry where newSession is null but we had a user
                     setSession(null)
                     setUser(null)
                     setRole(null)
+                    setCanAssign(false)
                     lastUserId.current = null
                 }
             } catch (error) {
@@ -192,10 +208,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(null)
         setSession(null)
         setRole(null)
+        setCanAssign(false)
     }
 
     return (
-        <AuthContext.Provider value={{ user, session, role, loading, signOut }}>
+        <AuthContext.Provider value={{ user, session, role, canAssign, loading, signOut }}>
             {children}
         </AuthContext.Provider>
     )

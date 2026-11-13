@@ -40,7 +40,7 @@ export function TaskEditForm({
         notes: task.notes || '',
         link: task.link || ''
     })
-    const { role } = useAuth()
+    const { role, canAssign } = useAuth()
 
     const fetchMembers = useCallback(async () => {
         const { data } = await supabase
@@ -125,62 +125,68 @@ export function TaskEditForm({
 
             if (taskError) throw taskError
 
-            // Delete old assignees
-            const { error: deleteError } = await supabase
-                .from('task_assignees')
-                .delete()
-                .eq('task_id', task.id)
-
-            if (deleteError) throw deleteError
-
-            // Insert new assignees
-            if (selectedMembers.length > 0) {
-                const assigneeRecords = selectedMembers.map(member => ({
-                    task_id: task.id,
-                    assignee_name: member.full_name,
-                    member_id: member.id
-                }))
-
-                const { error: assigneeError } = await supabase
+            // Repartir responsables es atribución de quien tiene `puede_asignar`.
+            // El bloque entero se saltea para el resto: el delete de abajo borra todos
+            // los responsables de la tarea antes de reinsertarlos, así que dejarlo correr
+            // sin permiso vaciaría la asignación en cada guardado.
+            if (canAssign) {
+                // Delete old assignees
+                const { error: deleteError } = await supabase
                     .from('task_assignees')
-                    .insert(assigneeRecords)
+                    .delete()
+                    .eq('task_id', task.id)
 
-                if (assigneeError) throw assigneeError
+                if (deleteError) throw deleteError
 
-                // Enviar notificaciones por email a los responsables
-                const emailPromises = selectedMembers
-                    .filter(member => member.email) // Solo enviar a miembros con email
-                    .map(async (member) => {
-                        try {
-                            const response = await fetch('/api/send-task-notification', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    email: member.email,
-                                    memberName: member.full_name,
-                                    taskTitle: formData.title,
-                                    taskNotes: formData.notes || null,
-                                    taskLink: formData.link || null,
-                                    projectTitle: projectTitle,
-                                    notificationType: 'update', // Indicar que es una actualización
-                                }),
-                            })
+                // Insert new assignees
+                if (selectedMembers.length > 0) {
+                    const assigneeRecords = selectedMembers.map(member => ({
+                        task_id: task.id,
+                        assignee_name: member.full_name,
+                        member_id: member.id
+                    }))
 
-                            if (!response.ok) {
-                                const errorData = await response.json()
-                                console.error(`Error enviando email a ${member.email}:`, errorData)
+                    const { error: assigneeError } = await supabase
+                        .from('task_assignees')
+                        .insert(assigneeRecords)
+
+                    if (assigneeError) throw assigneeError
+
+                    // Enviar notificaciones por email a los responsables
+                    const emailPromises = selectedMembers
+                        .filter(member => member.email) // Solo enviar a miembros con email
+                        .map(async (member) => {
+                            try {
+                                const response = await fetch('/api/send-task-notification', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        email: member.email,
+                                        memberName: member.full_name,
+                                        taskTitle: formData.title,
+                                        taskNotes: formData.notes || null,
+                                        taskLink: formData.link || null,
+                                        projectTitle: projectTitle,
+                                        notificationType: 'update', // Indicar que es una actualización
+                                    }),
+                                })
+
+                                if (!response.ok) {
+                                    const errorData = await response.json()
+                                    console.error(`Error enviando email a ${member.email}:`, errorData)
+                                }
+                            } catch (error) {
+                                console.error(`Error enviando email a ${member.email}:`, error)
                             }
-                        } catch (error) {
-                            console.error(`Error enviando email a ${member.email}:`, error)
-                        }
-                    })
+                        })
 
-                // Enviar emails en paralelo (no bloqueamos la UI)
-                Promise.all(emailPromises).catch(err => {
-                    console.error('Error al enviar algunos emails:', err)
-                })
+                    // Enviar emails en paralelo (no bloqueamos la UI)
+                    Promise.all(emailPromises).catch(err => {
+                        console.error('Error al enviar algunos emails:', err)
+                    })
+                }
             }
 
             setOpen(false)
@@ -269,52 +275,71 @@ export function TaskEditForm({
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="assignees">Responsables</Label>
-                            <div className="relative">
-                                <div className="flex gap-2">
-                                    <Input
-                                        id="assignees"
-                                        value={assigneeInput}
-                                        onChange={(e) => {
-                                            setAssigneeInput(e.target.value)
-                                            setShowSuggestions(true)
-                                        }}
-                                        onFocus={() => setShowSuggestions(true)}
-                                        placeholder="Buscar miembro..."
-                                    />
-                                </div>
-
-                                {showSuggestions && filteredSuggestions.length > 0 && (
-                                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                                        {filteredSuggestions.map((member) => (
-                                            <button
-                                                key={member.id}
-                                                type="button"
-                                                className="w-full text-left px-3 py-2 hover:bg-slate-100 text-sm"
-                                                onClick={() => addMember(member)}
-                                            >
-                                                {member.full_name}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                            {selectedMembers.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                    {selectedMembers.map((member) => (
-                                        <Badge key={member.id} variant="secondary" className="gap-1">
-                                            {member.full_name}
-                                            <button
-                                                type="button"
-                                                className="ml-1 hover:bg-slate-200 rounded-full p-0.5 transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400"
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    removeMember(member.id)
+                            {canAssign ? (
+                                <>
+                                    <div className="relative">
+                                        <div className="flex gap-2">
+                                            <Input
+                                                id="assignees"
+                                                value={assigneeInput}
+                                                onChange={(e) => {
+                                                    setAssigneeInput(e.target.value)
+                                                    setShowSuggestions(true)
                                                 }}
-                                            >
-                                                <X className="w-3 h-3" />
-                                            </button>
-                                        </Badge>
-                                    ))}
+                                                onFocus={() => setShowSuggestions(true)}
+                                                placeholder="Buscar miembro..."
+                                            />
+                                        </div>
+
+                                        {showSuggestions && filteredSuggestions.length > 0 && (
+                                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                                                {filteredSuggestions.map((member) => (
+                                                    <button
+                                                        key={member.id}
+                                                        type="button"
+                                                        className="w-full text-left px-3 py-2 hover:bg-slate-100 text-sm"
+                                                        onClick={() => addMember(member)}
+                                                    >
+                                                        {member.full_name}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    {selectedMembers.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {selectedMembers.map((member) => (
+                                                <Badge key={member.id} variant="secondary" className="gap-1">
+                                                    {member.full_name}
+                                                    <button
+                                                        type="button"
+                                                        className="ml-1 hover:bg-slate-200 rounded-full p-0.5 transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            removeMember(member.id)
+                                                        }}
+                                                    >
+                                                        <X className="w-3 h-3" />
+                                                    </button>
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                // Sin permiso para asignar: se ve quién tiene la tarea, pero no se cambia.
+                                // Mostramos task.assignees y no selectedMembers, que descarta a los
+                                // responsables que ya no figuran en la lista de miembros.
+                                <div className="flex flex-wrap gap-2">
+                                    {task.assignees.length > 0 ? (
+                                        task.assignees.map((assignee) => (
+                                            <Badge key={assignee.id} variant="secondary">
+                                                {assignee.assignee_name}
+                                            </Badge>
+                                        ))
+                                    ) : (
+                                        <span className="text-sm text-slate-500">Sin responsables asignados</span>
+                                    )}
                                 </div>
                             )}
                         </div>

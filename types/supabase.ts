@@ -44,6 +44,7 @@ export type Database = {
                     role: string | null
                     avatar_url: string | null
                     habilita: number
+                    puede_asignar: boolean | null
                 }
                 Insert: {
                     id: string
@@ -52,6 +53,7 @@ export type Database = {
                     role?: string | null
                     avatar_url?: string | null
                     habilita?: number
+                    puede_asignar?: boolean | null
                 }
                 Update: {
                     id?: string
@@ -60,6 +62,7 @@ export type Database = {
                     role?: string | null
                     avatar_url?: string | null
                     habilita?: number
+                    puede_asignar?: boolean | null
                 }
                 Relationships: []
             }

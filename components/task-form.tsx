@@ -35,7 +35,7 @@ export function TaskForm({
         notes: '',
         link: ''
     })
-    const { role } = useAuth()
+    const { role, canAssign } = useAuth()
 
 
 
@@ -118,7 +118,9 @@ export function TaskForm({
             if (taskError) throw taskError
 
             // Insert assignees
-            if (selectedMembers.length > 0 && taskData) {
+            // Repartir el trabajo es atribución de quien tiene `puede_asignar`.
+            // Quien no lo tiene crea la tarea sin responsables, para que la asigne quien corresponda.
+            if (canAssign && selectedMembers.length > 0 && taskData) {
                 const assigneeRecords = selectedMembers.map(member => ({
                     task_id: taskData.id,
                     assignee_name: member.full_name,
@@ -262,52 +264,54 @@ export function TaskForm({
                             onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
                         />
                     </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="assignees">Responsables</Label>
-                        <div className="relative">
-                            <div className="flex gap-2">
-                                <Input
-                                    id="assignees"
-                                    value={assigneeInput}
-                                    onChange={(e) => {
-                                        setAssigneeInput(e.target.value)
-                                        setShowSuggestions(true)
-                                    }}
-                                    onFocus={() => setShowSuggestions(true)}
-                                    placeholder="Buscar miembro..."
-                                />
-                            </div>
+                    {canAssign && (
+                        <div className="grid gap-2">
+                            <Label htmlFor="assignees">Responsables</Label>
+                            <div className="relative">
+                                <div className="flex gap-2">
+                                    <Input
+                                        id="assignees"
+                                        value={assigneeInput}
+                                        onChange={(e) => {
+                                            setAssigneeInput(e.target.value)
+                                            setShowSuggestions(true)
+                                        }}
+                                        onFocus={() => setShowSuggestions(true)}
+                                        placeholder="Buscar miembro..."
+                                    />
+                                </div>
 
-                            {/* Suggestions dropdown */}
-                            {showSuggestions && filteredSuggestions.length > 0 && (
-                                <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                                    {filteredSuggestions.map((member) => (
-                                        <button
-                                            key={member.id}
-                                            type="button"
-                                            className="w-full text-left px-3 py-2 hover:bg-slate-100 text-sm"
-                                            onClick={() => addMember(member)}
-                                        >
+                                {/* Suggestions dropdown */}
+                                {showSuggestions && filteredSuggestions.length > 0 && (
+                                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                                        {filteredSuggestions.map((member) => (
+                                            <button
+                                                key={member.id}
+                                                type="button"
+                                                className="w-full text-left px-3 py-2 hover:bg-slate-100 text-sm"
+                                                onClick={() => addMember(member)}
+                                            >
+                                                {member.full_name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            {selectedMembers.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    {selectedMembers.map((member) => (
+                                        <Badge key={member.id} variant="secondary" className="gap-1">
                                             {member.full_name}
-                                        </button>
+                                            <X
+                                                className="w-3 h-3 cursor-pointer"
+                                                onClick={() => removeMember(member.id)}
+                                            />
+                                        </Badge>
                                     ))}
                                 </div>
                             )}
                         </div>
-                        {selectedMembers.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-2">
-                                {selectedMembers.map((member) => (
-                                    <Badge key={member.id} variant="secondary" className="gap-1">
-                                        {member.full_name}
-                                        <X
-                                            className="w-3 h-3 cursor-pointer"
-                                            onClick={() => removeMember(member.id)}
-                                        />
-                                    </Badge>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    )}
                     <div className="grid gap-2">
                         <Label htmlFor="notes">Notas</Label>
                         <Textarea
