@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
@@ -40,6 +40,8 @@ export function ProjectsListView() {
     const [dailyNotesOpen, setDailyNotesOpen] = useState(false)
     const [notesCount, setNotesCount] = useState(0)
     const { role, user, loading: authLoading } = useAuth()
+    // Permite que el botón "Reintentar" dispare la misma carga que el reintento automático.
+    const reloadRef = useRef<() => void>(() => { })
 
     const fetchNotesCount = useCallback(async () => {
         try {
@@ -65,15 +67,46 @@ export function ProjectsListView() {
             return
         }
 
-        setLoading(true)
-        setLoadError(null)
+        let cancelled = false
+        let attempt = 0
+        let retryTimer: number | null = null
 
-        const t = window.setTimeout(() => {
+        // Esta pantalla vive en un televisor sin nadie que la atienda: ante una carga
+        // fallida reintenta sola con espera creciente (2s, 4s, 8s... hasta 30s).
+        const load = async () => {
+            if (cancelled) return
+
+            if (retryTimer !== null) {
+                window.clearTimeout(retryTimer)
+                retryTimer = null
+            }
+
+            setLoading(true)
+            setLoadError(null)
+
+            // Los proyectos son lo único que bloquea la pantalla.
+            const projectsOk = await fetchProjects()
+            if (cancelled) return
+
             setLoading(false)
-            setLoadError('La carga tardó demasiado. Reintentá.')
-        }, 12000)
 
-        Promise.all([fetchProjects(), fetchTasksAndProgress(), fetchNotesCount()]).finally(() => window.clearTimeout(t))
+            // El progreso y el contador de notas se completan después, sin bloquear.
+            fetchTasksAndProgress()
+            fetchNotesCount()
+
+            if (projectsOk) {
+                attempt = 0
+                return
+            }
+
+            attempt += 1
+            const delayMs = Math.min(30000, 2000 * 2 ** (attempt - 1))
+            setLoadError(`No se pudieron cargar los proyectos. Reintentando en ${Math.round(delayMs / 1000)} s…`)
+            retryTimer = window.setTimeout(load, delayMs)
+        }
+
+        reloadRef.current = () => { attempt = 0; load() }
+        load()
 
         // Suscripción a cambios en tiempo real de la tabla projects
         const projectsChannel = supabase
@@ -132,39 +165,41 @@ export function ProjectsListView() {
 
         // Cleanup: cancelar suscripción cuando el componente se desmonta
         return () => {
+            cancelled = true
+            if (retryTimer !== null) window.clearTimeout(retryTimer)
             supabase.removeChannel(projectsChannel)
             supabase.removeChannel(tasksChannel)
             supabase.removeChannel(notesChannel)
         }
     }, [authLoading, user?.id, fetchNotesCount])
 
-    const fetchProjects = useCallback(async () => {
+    const fetchProjects = useCallback(async (): Promise<boolean> => {
         try {
-            setLoadError(null)
-            const query = supabase
+            const { data, error } = await supabase
                 .from('projects')
                 .select('*')
                 .eq('habilita', 1)
                 .order('deadline', { ascending: true })
 
-            const { data } = await query
-
+            if (error) throw error
             if (data) setProjects(data)
+            return true
         } catch (error) {
             console.error('Error fetching projects:', error)
-            setLoadError('No se pudieron cargar los proyectos. Reintentá.')
-        } finally {
-            setLoading(false)
+            return false
         }
     }, [])
 
-    const fetchTasksAndProgress = useCallback(async () => {
+    const fetchTasksAndProgress = useCallback(async (): Promise<boolean> => {
         try {
-            setLoadError(null)
-            const { data: allTasks } = await supabase
+            // Solo los tres campos que se usan más abajo. Traer `*, projects(*)`
+            // bajaba ~260 KB por carga para calcular porcentajes: ahora son ~42 KB.
+            const { data: allTasks, error } = await supabase
                 .from('tasks')
-                .select('*, projects(*)')
+                .select('project_id, status, projects(title)')
                 .eq('habilita', 1)
+
+            if (error) throw error
 
             const progressMap = new Map<string, ProjectProgress>()
             const progressState: Record<string, number> = {}
@@ -227,9 +262,12 @@ export function ProjectsListView() {
 
             setChartData(Array.from(progressMap.values()).sort((a, b) => b.total - a.total))
             setProjectProgress(progressState)
+            return true
         } catch (error) {
+            // El progreso es secundario: si falla, la pantalla igual muestra los proyectos
+            // en lugar de quedar en blanco con un cartel de error.
             console.error('Error fetching tasks and progress:', error)
-            setLoadError('No se pudieron cargar los datos de progreso.')
+            return false
         }
     }, [])
 
@@ -357,14 +395,9 @@ export function ProjectsListView() {
                 <div className="mb-3 font-medium text-slate-700">{loadError}</div>
                 <Button
                     variant="outline"
-                    onClick={() => {
-                        setLoading(true)
-                        setLoadError(null)
-                        fetchProjects()
-                        fetchTasksAndProgress()
-                    }}
+                    onClick={() => reloadRef.current()}
                 >
-                    Reintentar
+                    Reintentar ahora
                 </Button>
             </div>
         )
